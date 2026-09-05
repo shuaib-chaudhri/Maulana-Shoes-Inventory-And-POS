@@ -1,0 +1,74 @@
+{
+  "name": "maulana-shoes-inventory-pos",
+  "private": true,
+  "version": "1.0.0",
+  "main": "main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.cjs",
+    "electron:dev": "electron .",
+    "postinstall": "electron-builder install-app-deps",
+    "dist": "node scripts/apply-icon.cjs && electron-builder --win nsis --prepackaged release/win-unpacked",
+    "dist:installer": "node scripts/apply-icon.cjs && electron-builder --win nsis --prepackaged release/win-unpacked"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.4",
+    "better-sqlite3": "^13.0.3"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0"
+  },
+  "build": {
+    "appId": "com.maulana.shoes.pos",
+    "productName": "Maulana Shoes POS",
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "server/**/*",
+      "main.cjs",
+      "preload.cjs",
+      "server.cjs",
+      "build/icon.ico",
+      "build/icon.png",
+      "logo.png",
+      "maulana_pos_data.json",
+      "package.json",
+      "!**/*.sqlite*",
+      "!**/*.db*"
+    ],
+    "extraMetadata": {
+      "main": "main.cjs"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Maulana Shoes POS"
+    }
+  }
+}
