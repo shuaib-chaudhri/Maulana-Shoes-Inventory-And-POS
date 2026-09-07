@@ -51,28 +51,68 @@ if (fs.existsSync(path.join(rootDir, 'build'))) {
   copyDirSync(path.join(rootDir, 'build'), path.join(stagingDir, 'build'));
 }
 
-// Copy updater runtime dependencies into staging node_modules
-const updaterModules = [
-  'electron-updater',
-  'builder-util-runtime',
-  'fs-extra',
-  'jsonfile',
-  'semver',
-  'universalify',
-  'lodash.escaperegexp',
-  'lodash.isequal',
-  'tiny-typed-emitter',
-  'js-yaml',
-  'lazy-val'
-];
+// Collect ALL production dependencies dynamically + comprehensive safety list
+function getProductionDependencies() {
+  const deps = new Set([
+    'electron-updater',
+    'builder-util-runtime',
+    'fs-extra',
+    'graceful-fs',
+    'jsonfile',
+    'universalify',
+    'semver',
+    'js-yaml',
+    'argparse',
+    'lazy-val',
+    'lodash.escaperegexp',
+    'lodash.isequal',
+    'tiny-typed-emitter',
+    'debug',
+    'ms',
+    'sax'
+  ]);
 
-for (const mod of updaterModules) {
-  const src = path.join(rootDir, 'node_modules', mod);
-  const dest = path.join(stagingDir, 'node_modules', mod);
+  try {
+    const raw = cp.execSync('npm ls --omit=dev --all --json', { cwd: rootDir, encoding: 'utf8' });
+    const parsed = JSON.parse(raw);
+    function collect(node) {
+      if (node && node.dependencies) {
+        for (const [name, info] of Object.entries(node.dependencies)) {
+          deps.add(name);
+          collect(info);
+        }
+      }
+    }
+    collect(parsed);
+  } catch (err) {
+    console.warn('Could not read npm ls output, using comprehensive fallback list:', err.message);
+  }
+
+  return Array.from(deps);
+}
+
+console.log('Copying production dependencies into staging...');
+const allDeps = getProductionDependencies();
+const destModulesDir = path.join(stagingDir, 'node_modules');
+if (!fs.existsSync(destModulesDir)) fs.mkdirSync(destModulesDir, { recursive: true });
+
+for (const dep of allDeps) {
+  if (dep === 'better-sqlite3') continue; // Preserve existing native addon from extracted ASAR
+  const src = path.join(rootDir, 'node_modules', dep);
+  const dest = path.join(destModulesDir, dep);
   if (fs.existsSync(src)) {
+    if (dep.includes('/')) {
+      const parentDir = path.dirname(dest);
+      if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir, { recursive: true });
+    }
     copyDirSync(src, dest);
   }
 }
+
+console.log('Verifying staging dependencies before repacking...');
+const verifyCmd = 'node -e "require(\'./node_modules/electron-updater\'); require(\'./node_modules/fs-extra\'); require(\'./node_modules/graceful-fs\'); console.log(\'DEPENDENCY_CHECK_PASSED\');"';
+const verifyRes = cp.execSync(verifyCmd, { cwd: stagingDir, encoding: 'utf8' });
+console.log('Staging verification result:', verifyRes.trim());
 
 // Write app-update.yml config
 const appUpdateYaml = `owner: shuaib-chaudhri
