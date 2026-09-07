@@ -28,7 +28,7 @@ function copyDirSync(srcDir, destDir) {
 if (!fs.existsSync(asarFile)) {
   console.log('Unpacked base not found at:', asarFile);
   console.log('Generating win-unpacked directory using electron-builder...');
-  cp.execSync('npx electron-builder --win --dir -c.directories.output=release', { cwd: rootDir, stdio: 'inherit' });
+  cp.execSync('npx electron-builder --win --dir --config.directories.output=release', { cwd: rootDir, stdio: 'inherit' });
 }
 
 console.log('Extracting asar from:', asarFile);
