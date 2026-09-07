@@ -51,8 +51,41 @@ if (fs.existsSync(path.join(rootDir, 'build'))) {
   copyDirSync(path.join(rootDir, 'build'), path.join(stagingDir, 'build'));
 }
 
+// Copy updater runtime dependencies into staging node_modules
+const updaterModules = [
+  'electron-updater',
+  'builder-util-runtime',
+  'fs-extra',
+  'jsonfile',
+  'semver',
+  'universalify',
+  'lodash.escaperegexp',
+  'lodash.isequal',
+  'tiny-typed-emitter',
+  'js-yaml',
+  'lazy-val'
+];
+
+for (const mod of updaterModules) {
+  const src = path.join(rootDir, 'node_modules', mod);
+  const dest = path.join(stagingDir, 'node_modules', mod);
+  if (fs.existsSync(src)) {
+    copyDirSync(src, dest);
+  }
+}
+
+// Write app-update.yml config
+const appUpdateYaml = `owner: shuaib-chaudhri
+repo: Maulana-Shoes-Inventory-And-POS
+provider: github
+updaterCacheDirName: maulana-shoes-inventory-pos-updater
+`;
+
+fs.writeFileSync(path.join(stagingDir, 'app-update.yml'), appUpdateYaml, 'utf8');
+
 // Copy directly to resources as unbundled backup
 const resDir = path.join(rootDir, 'release', 'win-unpacked', 'resources');
+fs.writeFileSync(path.join(resDir, 'app-update.yml'), appUpdateYaml, 'utf8');
 fs.copyFileSync(path.join(rootDir, 'maulana_pos_data.json'), path.join(resDir, 'maulana_pos_data.json'));
 fs.copyFileSync(path.join(rootDir, 'logo.png'), path.join(resDir, 'logo.png'));
 

@@ -20,21 +20,21 @@ if (!isElectron) {
 }
 
 function getResolvedDataDir() {
-  if (process.env.USER_DATA_PATH && fs.existsSync(process.env.USER_DATA_PATH)) {
-    return process.env.USER_DATA_PATH;
-  }
-  const devCandidates = [
-    'c:\\Users\\shuai\\OneDrive\\Desktop\\Demo\\Demo',
-    path.join(__dirname, '..'),
-    path.join(process.cwd())
-  ];
-  for (const dir of devCandidates) {
+  if (process.env.USER_DATA_PATH) {
     try {
-      const p = path.join(dir, 'maulana_pos_data.json');
-      if (fs.existsSync(p)) {
-        fs.accessSync(p, fs.constants.R_OK | fs.constants.W_OK);
-        return dir;
+      if (!fs.existsSync(process.env.USER_DATA_PATH)) {
+        fs.mkdirSync(process.env.USER_DATA_PATH, { recursive: true });
       }
+      return process.env.USER_DATA_PATH;
+    } catch (e) {}
+  }
+  if (process.env.APPDATA) {
+    const p = path.join(process.env.APPDATA, 'maulana-shoes-inventory-pos');
+    try {
+      if (!fs.existsSync(p)) {
+        fs.mkdirSync(p, { recursive: true });
+      }
+      return p;
     } catch (e) {}
   }
   return path.join(__dirname, '..');
@@ -50,10 +50,9 @@ if (!fs.existsSync(userDataDir)) {
 const DB_PATH = path.join(userDataDir, 'maulana_pos.sqlite');
 const JSON_BACKUP_PATH = path.join(userDataDir, 'maulana_pos_data.json');
 
-// Bundled master template fallback
+// Bundled master template fallback (for INITIAL SEED ONLY when user data does not exist)
 function getBundledDataPath() {
   const candidates = [
-    'c:\\Users\\shuai\\OneDrive\\Desktop\\Demo\\Demo\\maulana_pos_data.json',
     path.join(process.resourcesPath || '', 'maulana_pos_data.json'),
     path.join(__dirname, '..', 'maulana_pos_data.json'),
     path.join(__dirname, 'maulana_pos_data.json'),
@@ -61,7 +60,7 @@ function getBundledDataPath() {
   ];
   for (const c of candidates) {
     try {
-      if (fs.existsSync(c)) return c;
+      if (c && c !== JSON_BACKUP_PATH && fs.existsSync(c)) return c;
     } catch (e) {}
   }
   return null;
@@ -82,12 +81,15 @@ function loadJsonStore(forceReload = false) {
       console.warn('Error reading user JSON file:', e.message);
     }
   }
-  if (!jsonStore) {
+  // Initial seed happens ONLY when the user-data JSON file does not exist.
+  // Never re-seed or restore bundled default data over existing user data.
+  if (!jsonStore && !fs.existsSync(JSON_BACKUP_PATH)) {
     const bundled = getBundledDataPath();
-    if (bundled) {
+    if (bundled && bundled !== JSON_BACKUP_PATH && fs.existsSync(bundled)) {
       try {
         jsonStore = JSON.parse(fs.readFileSync(bundled, 'utf8'));
-        // Save initial copy to user data dir
+        const dir = path.dirname(JSON_BACKUP_PATH);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(JSON_BACKUP_PATH, JSON.stringify(jsonStore, null, 2), 'utf8');
       } catch (e) {}
     }
@@ -110,6 +112,8 @@ function loadJsonStore(forceReload = false) {
 function saveJsonStore() {
   if (!jsonStore) return;
   try {
+    const dir = path.dirname(JSON_BACKUP_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(JSON_BACKUP_PATH, JSON.stringify(jsonStore, null, 2), 'utf8');
   } catch (err) {
     console.error('Failed to write JSON backup to disk:', err.message);
@@ -415,7 +419,7 @@ function seedInitialData(db) {
 function getBootstrapData() {
   const db = getDb();
   if (!db) {
-    const store = loadJsonStore();
+    const store = loadJsonStore(true);
     if (!store.settings) store.settings = {};
     return {
       success: true,
@@ -433,7 +437,16 @@ function getBootstrapData() {
   }
 
   const settingsRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('store_settings');
-  const settings = settingsRow ? JSON.parse(settingsRow.value) : {};
+  let settings = settingsRow ? JSON.parse(settingsRow.value) : {};
+  if (!settings || Object.keys(settings).length === 0) {
+    try {
+      const diskStore = loadJsonStore(true);
+      if (diskStore && diskStore.settings && Object.keys(diskStore.settings).length > 0) {
+        settings = diskStore.settings;
+        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('store_settings', JSON.stringify(settings));
+      }
+    } catch (e) {}
+  }
 
   const products = db.prepare('SELECT * FROM products ORDER BY created_at DESC').all();
   const variants = db.prepare('SELECT * FROM product_variants').all();
@@ -470,6 +483,18 @@ function autoBackupToJsonDisk() {
   try {
     const res = getBootstrapData();
     if (res && res.data) {
+      if (!res.data.settings || Object.keys(res.data.settings).length === 0) {
+        if (fs.existsSync(JSON_BACKUP_PATH)) {
+          try {
+            const diskObj = JSON.parse(fs.readFileSync(JSON_BACKUP_PATH, 'utf8'));
+            if (diskObj && diskObj.settings && Object.keys(diskObj.settings).length > 0) {
+              res.data.settings = diskObj.settings;
+            }
+          } catch (e) {}
+        }
+      }
+      const dir = path.dirname(JSON_BACKUP_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(JSON_BACKUP_PATH, JSON.stringify(res.data, null, 2), 'utf-8');
     }
   } catch (err) {
@@ -494,7 +519,7 @@ function saveProduct(data) {
   const db = getDb();
   if (!db) {
     const store = loadJsonStore();
-    const { product, variants = [], boxes = [], box_items = [], inventory_pieces = [] } = data;
+    const { product, variants = [], boxes = [], box_items = [], inventory_pieces = [], is_non_footwear = false } = data;
     if (product && product.id) {
       const pIdx = store.products.findIndex(p => p.id === product.id);
       if (pIdx >= 0) store.products[pIdx] = { ...store.products[pIdx], ...product };
@@ -515,6 +540,12 @@ function saveProduct(data) {
       if (biIdx >= 0) store.box_items[biIdx] = { ...store.box_items[biIdx], ...bi };
       else store.box_items.push(bi);
     });
+
+    if (is_non_footwear && product && product.id) {
+      const keepIds = new Set(inventory_pieces.map(p => p.id));
+      store.inventory_items = store.inventory_items.filter(pi => pi.product_id !== product.id || pi.status !== 'In Stock' || keepIds.has(pi.id));
+    }
+
     inventory_pieces.forEach(pi => {
       const piIdx = store.inventory_items.findIndex(x => x.id === pi.id);
       if (piIdx >= 0) store.inventory_items[piIdx] = { ...store.inventory_items[piIdx], ...pi };
@@ -525,7 +556,7 @@ function saveProduct(data) {
     return getBootstrapData();
   }
 
-  const { product, variants = [], boxes = [], box_items = [], inventory_pieces = [] } = data;
+  const { product, variants = [], boxes = [], box_items = [], inventory_pieces = [], is_non_footwear = false } = data;
 
   const tx = db.transaction(() => {
     // Upsert product
@@ -572,6 +603,17 @@ function saveProduct(data) {
         INSERT OR REPLACE INTO box_items (id, box_id, variant_id, quantity)
         VALUES (@id, @box_id, @variant_id, @quantity)
       `).run(bi);
+    }
+
+    // Clean up excess in-stock pieces for non-footwear products when stock is directly updated
+    if (is_non_footwear && product && product.id) {
+      const pieceIds = inventory_pieces.map(pi => pi.id);
+      if (pieceIds.length > 0) {
+        const placeholders = pieceIds.map(() => '?').join(',');
+        db.prepare(`DELETE FROM inventory_pieces WHERE product_id = ? AND status = 'In Stock' AND id NOT IN (${placeholders})`).run(product.id, ...pieceIds);
+      } else {
+        db.prepare(`DELETE FROM inventory_pieces WHERE product_id = ? AND status = 'In Stock'`).run(product.id);
+      }
     }
 
     // Upsert inventory pieces
@@ -763,7 +805,7 @@ function completeSale(saleData) {
 function updateSettings(settings) {
   const db = getDb();
   if (!db) {
-    const store = loadJsonStore();
+    const store = loadJsonStore(true);
     store.settings = { ...(store.settings || {}), ...settings };
     saveJsonStore();
     supabaseSync.syncSettings(store.settings);
@@ -774,6 +816,15 @@ function updateSettings(settings) {
   const existing = existingRow ? JSON.parse(existingRow.value) : {};
   const merged = { ...existing, ...settings };
   db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('store_settings', JSON.stringify(merged));
+  
+  try {
+    const store = loadJsonStore(true);
+    store.settings = merged;
+    saveJsonStore();
+  } catch (e) {
+    console.warn('Could not write settings to JSON store:', e.message);
+  }
+
   autoBackupToJsonDisk();
   supabaseSync.syncSettings(merged);
   return getBootstrapData();

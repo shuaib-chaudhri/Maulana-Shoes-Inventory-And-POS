@@ -1835,6 +1835,12 @@
               <span class="filter-pill" onclick="filterProductsByCategory('Casual', this)">Casual</span>
               <span class="filter-pill" onclick="filterProductsByCategory('Boots', this)">Boots</span>
               <span class="filter-pill" onclick="filterProductsByCategory('Sandals', this)">Sandals</span>
+              <span class="filter-pill" onclick="filterProductsByCategory('Slippers', this)">Slippers</span>
+              <span class="filter-pill" onclick="filterProductsByCategory('Belts', this)">Belts</span>
+              <span class="filter-pill" onclick="filterProductsByCategory('Wallets', this)">Wallets</span>
+              <span class="filter-pill" onclick="filterProductsByCategory('Socks', this)">Socks</span>
+              <span class="filter-pill" onclick="filterProductsByCategory('Shoe Shiners', this)">Shoe Shiners</span>
+              <span class="filter-pill" onclick="filterProductsByCategory('Perfume', this)">Perfume</span>
             </div>
             <div style="min-width:280px; flex:1; max-width:400px;">
               <input id="prodSearchInput" placeholder="Search shoe name, brand, SKU, size, or box..."
@@ -1916,6 +1922,12 @@
             <p class="page-subtitle">Scan, bill and print receipts quickly</p>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
+            <button id="btnFreshManualBill" class="btn sm" onclick="openManualBillModal(true)"
+              style="border:1.5px solid var(--primary); color:var(--primary); background:#fefce8; font-weight:800; padding:5px 10px;"
+              title="Create fresh/manual bill without inventory">
+              <span class="material-symbols-outlined" style="font-size:16px;">post_add</span>
+              <span>Fresh / Manual Bill</span>
+            </button>
             <button id="btnExchangeMode" class="btn sm" onclick="toggleExchangeMode()"
               style="border:1.5px solid #f97316; color:#c2410c; background:#fff7ed; font-weight:800; padding:5px 10px;"
               title="Toggle Exchange Return mode (F7)">
@@ -1960,6 +1972,9 @@
                 <button class="btn" onclick="openProductSearchModal()">
                   <span class="material-symbols-outlined">search</span> Search (F4)
                 </button>
+                <button class="btn" type="button" onclick="openManualBillModal(false)" title="Add item manually without inventory">
+                  <span class="material-symbols-outlined">edit_note</span> Manual Item
+                </button>
               </div>
             </div>
 
@@ -1986,6 +2001,10 @@
                 <div style="display:flex; align-items:center; gap:8px;">
                   <span id="billItemsCountBadge" class="badge"
                     style="background:#fef9c3; color:#854d0e; font-size:12.5px; font-weight:800;">0 items</span>
+                  <button class="btn sm" onclick="openManualBillModal(false)" title="Add manual item without inventory"
+                    style="border:1.5px solid var(--primary); color:var(--primary); font-weight:800;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">edit_note</span> + Manual Item
+                  </button>
                   <button class="btn sm" onclick="clearCurrentBill()" title="Clear bill items"><span
                       class="material-symbols-outlined" style="font-size:14px;">clear_all</span> Clear</button>
                 </div>
@@ -2518,7 +2537,7 @@
             style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
             <h3 class="panel-title" style="margin:0;"><span class="material-symbols-outlined"
                 style="color:var(--primary)">save</span> System Local Storage & PC Hard Disk Auto-Save</h3>
-            
+
           </div>
           <p style="font-size:13px; font-weight:600; color:#334155; margin-bottom:14px;">
             Your store data is continuously preserved across multiple local storage layers on this computer so nothing
@@ -2595,7 +2614,7 @@
 
           <div class="form-section">
             <div class="form-section-title"><span class="material-symbols-outlined" style="font-size:16px;">info</span>
-              1. Basic Shoe Information</div>
+              1. Basic Product Information</div>
             <div class="form-row">
               <div>
                 <label>Product / Model Name *</label>
@@ -2613,7 +2632,7 @@
               </div>
               <div>
                 <label>Category / Type</label>
-                <select id="pCategory">
+                <select id="pCategory" onchange="handleProductCategoryChange()">
                   <option value="Sports">Sports</option>
                   <option value="Sneakers">Sneakers</option>
                   <option value="Loafers">Loafers</option>
@@ -2621,6 +2640,12 @@
                   <option value="Casual">Casual</option>
                   <option value="Boots">Boots</option>
                   <option value="Sandals">Sandals</option>
+                  <option value="Slippers">Slippers</option>
+                  <option value="Belts">Belts</option>
+                  <option value="Wallets">Wallets</option>
+                  <option value="Socks">Socks</option>
+                  <option value="Shoe Shiners">Shoe Shiners</option>
+                  <option value="Perfume">Perfume</option>
                 </select>
               </div>
               <div>
@@ -2642,23 +2667,31 @@
                 <input id="pLowThreshold" type="number" min="1" value="5">
               </div>
             </div>
+            <!-- Direct Quantity for Non-Footwear Categories (Belts, Wallets, Socks, Shoe Shiners, Perfume) -->
+            <div id="nonFootwearQtyRow" class="form-row" style="display:none; margin-top:8px;">
+              <div>
+                <label style="font-weight:700;">Quantity *</label>
+                <input id="pQuantity" type="number" min="0" value="1" placeholder="e.g. 10">
+              </div>
+            </div>
           </div>
 
-          <!-- Footwear Variants (Size + Colour) -->
-          <div class="form-section">
+          <!-- Product Variants (Size + Colour) - Footwear Only -->
+          <div class="form-section" id="variantFormSection">
             <div class="form-section-title"><span class="material-symbols-outlined"
                 style="font-size:16px;">palette</span> 2. Size & Colour Variants</div>
-            <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Footwear products have multiple
+            <p id="variantSectionSubtitle" style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Footwear
+              products have multiple
               sizes. Each variant is trackable independently:</p>
             <div id="variantsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
             <div
               style="background:#ffffff; border:1.5px solid var(--border-color); border-radius:var(--radius-sm); padding:8px 10px; display:flex; gap:10px; align-items:flex-end;">
               <div style="flex:1;">
-                <label style="margin-bottom:2px;">Size</label>
+                <label id="newVarSizeLabel" style="margin-bottom:2px;">Size</label>
                 <input id="newVarSize" placeholder="e.g. 8" style="padding:6px 8px;">
               </div>
               <div style="flex:1;">
-                <label style="margin-bottom:2px;">Colour</label>
+                <label id="newVarColorLabel" style="margin-bottom:2px;">Colour / Variant</label>
                 <input id="newVarColor" placeholder="e.g. Black" style="padding:6px 8px;">
               </div>
               <button type="button" class="btn primary" onclick="addVariantRow()"><span
@@ -2666,8 +2699,8 @@
             </div>
           </div>
 
-          <!-- Physical Box Breakdown -->
-          <div class="form-section">
+          <!-- Physical Box Breakdown - Footwear Only -->
+          <div class="form-section" id="boxFormSection">
             <div class="form-section-title"><span class="material-symbols-outlined" style="font-size:16px;">inbox</span>
               3. Physical Boxes & Quantities</div>
             <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Assign quantities to physical boxes
@@ -2689,6 +2722,46 @@
         <button class="btn" onclick="closeModal('productFormModal')">Cancel</button>
         <button class="btn primary" onclick="saveProductAction()"><span class="material-symbols-outlined">save</span>
           Save Product</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FRESH / MANUAL BILL ITEM MODAL (NO INVENTORY) -->
+  <div id="manualBillItemModal" class="modal-backdrop">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 id="manualBillModalTitle"><span class="material-symbols-outlined" style="color:var(--primary)">edit_note</span>
+          Add Manual Item (No Inventory)</h3>
+        <button class="btn icon-only" onclick="closeModal('manualBillItemModal')"><span
+            class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+          Add an item directly without selecting from inventory or altering stock:
+        </p>
+        <div style="margin-bottom:12px;">
+          <label style="font-weight:700;">Item / Product Name *</label>
+          <input id="manualItemName" placeholder="e.g. Custom Shoes / Leather Polish / Belt" required autofocus
+            onkeydown="if(event.key==='Enter')document.getElementById('manualItemQty').focus()">
+        </div>
+        <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+          <div>
+            <label style="font-weight:700;">Quantity *</label>
+            <input id="manualItemQty" type="number" min="1" value="1" required
+              onkeydown="if(event.key==='Enter')document.getElementById('manualItemPrice').focus()">
+          </div>
+          <div>
+            <label style="font-weight:700;">Selling Price (₹) *</label>
+            <input id="manualItemPrice" type="number" min="0" placeholder="e.g. 499" required
+              onkeydown="if(event.key==='Enter')addManualItemToBillAction(false)">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal('manualBillItemModal')">Cancel</button>
+        <button class="btn" type="button" onclick="addManualItemToBillAction(true)">+ Add & New</button>
+        <button class="btn primary" type="button" onclick="addManualItemToBillAction(false)"><span
+            class="material-symbols-outlined">add_shopping_cart</span> Add to Bill</button>
       </div>
     </div>
   </div>
@@ -2909,6 +2982,11 @@
       return '₹' + Number(n || 0).toLocaleString('en-IN');
     }
 
+    // Smart Search Normalizer
+    function normalizeSearchStr(str) {
+      return String(str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
     // Smart Search Matching Helper (Exact, Partial, Normalized SKU/Barcode/Text)
     function smartSearchMatch(target, query) {
       if (!query) return true;
@@ -2916,26 +2994,21 @@
       const q = String(query).trim().toLowerCase();
       if (!q) return true;
       const t = String(target).toLowerCase();
+
       // 1. Direct substring match
       if (t.includes(q)) return true;
-      // 2. Normalized alphanumeric match (strips hyphens, spaces, slashes, underscores)
-      const normTarget = t.replace(/[^a-z0-9]/gi, '');
-      const normQuery = q.replace(/[^a-z0-9]/gi, '');
+
+      // 2. Normalized match (strips hyphens, spaces, slashes, underscores)
+      const normTarget = normalizeSearchStr(t);
+      const normQuery = normalizeSearchStr(q);
       if (normQuery && normTarget.includes(normQuery)) return true;
-      // 3. Bidirectional containment for prefix/composite SKUs (e.g. typing NIK-232BLK matches NIK-232 or 232BLK)
-      if (normTarget && normQuery && normQuery.includes(normTarget) && normTarget.length >= 3) return true;
-      // 4. Color / abbreviation expansions
-      const colorMap = { blk: 'black', wht: 'white', blu: 'blue', red: 'red', gry: 'grey', gray: 'grey', brn: 'brown', grn: 'green' };
-      for (const [abbr, full] of Object.entries(colorMap)) {
-        if (normQuery.includes(abbr) && normTarget.includes(full)) return true;
-        if (normTarget.includes(abbr) && normQuery.includes(full)) return true;
-      }
-      // 5. Multi-token match
-      const tokens = q.split(/[\s\-_/]+/).filter(Boolean);
-      if (tokens.length > 1) {
-        const allMatch = tokens.every(tok => {
-          const normTok = tok.replace(/[^a-z0-9]/gi, '');
-          return t.includes(tok) || (normTok && normTarget.includes(normTok));
+
+      // 3. Multi-word progressive narrowing (every word typed must match)
+      const words = q.split(/\s+/).filter(Boolean);
+      if (words.length > 1) {
+        const allMatch = words.every(w => {
+          const nw = normalizeSearchStr(w);
+          return t.includes(w) || (nw && normTarget.includes(nw));
         });
         if (allMatch) return true;
       }
@@ -3106,13 +3179,36 @@
         localStorage.setItem(ZOOM_KEY, 'auto');
       }
       applyZoomPreference();
+      populateProductCategoryDropdown();
 
       // Initialize Browser System Database (IndexedDB)
       await openIndexedDB();
 
       let dataLoaded = false;
 
-      // 1. Fetch from Backend API (Primary: same data flow as working unpacked app)
+      // 1. Direct Electron IPC disk storage (Zero-lag load directly from %APPDATA% disk file)
+      if (window.electronAPI && typeof window.electronAPI.loadState === 'function') {
+        try {
+          const diskState = await window.electronAPI.loadState();
+          if (diskState && ((diskState.products && diskState.products.length) || (diskState.settings && Object.keys(diskState.settings).length))) {
+            products = diskState.products || [];
+            variants = diskState.variants || [];
+            boxes = diskState.boxes || [];
+            box_items = diskState.box_items || [];
+            inventory_items = diskState.inventory_items || [];
+            sales = diskState.sales || [];
+            activities = diskState.activities || [];
+            if (diskState.settings && Object.keys(diskState.settings).length > 0) {
+              settings = { ...settings, ...diskState.settings };
+            }
+            dataLoaded = true;
+          }
+        } catch (e) {
+          console.warn('Electron IPC loadState error:', e);
+        }
+      }
+
+      // 2. Fetch from Backend API (Primary data synchronization)
       try {
         const resp = await fetch('/api/pos/bootstrap');
         if (resp.ok) {
@@ -3134,31 +3230,7 @@
           }
         }
       } catch (err) {
-        console.warn('Backend API not responding, trying fallbacks:', err);
-      }
-
-      // 2. Direct Electron IPC disk storage fallback (if backend API not ready yet)
-      if (!dataLoaded && window.electronAPI && typeof window.electronAPI.loadState === 'function') {
-        try {
-          const diskState = await window.electronAPI.loadState();
-          if (diskState && ((diskState.products && diskState.products.length) || (diskState.settings && Object.keys(diskState.settings).length))) {
-            products = diskState.products || [];
-            variants = diskState.variants || [];
-            boxes = diskState.boxes || [];
-            box_items = diskState.box_items || [];
-            inventory_items = diskState.inventory_items || [];
-            sales = diskState.sales || [];
-            activities = diskState.activities || [];
-            if (diskState.settings && Object.keys(diskState.settings).length > 0) {
-              settings = { ...settings, ...diskState.settings };
-            }
-            isServerConnected = true;
-            dataLoaded = true;
-            updateDbStatus(true);
-          }
-        } catch (e) {
-          console.warn('Electron IPC loadState failed, trying storage:', e);
-        }
+        console.warn('Backend API not responding, using disk/cache data:', err);
       }
 
       // 3. Fallback to Browser System Storage (IndexedDB) if server offline
@@ -3199,6 +3271,27 @@
       setupGlobalKeyShortcuts();
       fetchSystemStorageStatus();
       updateSystemStorageUI();
+
+      // Background auto-updater status notifications
+      if (window.electronAPI && typeof window.electronAPI.onUpdateProgress === 'function') {
+        let lastProgressToast = 0;
+        window.electronAPI.onUpdateProgress((data) => {
+          const now = Date.now();
+          if (data && data.percent !== undefined && (now - lastProgressToast > 4000 || data.percent === 100)) {
+            lastProgressToast = now;
+            showToast(`Downloading update: ${data.percent}%`, 'info');
+          }
+        });
+      }
+      if (window.electronAPI && typeof window.electronAPI.onUpdateStatus === 'function') {
+        window.electronAPI.onUpdateStatus((data) => {
+          if (data && data.status === 'downloading') {
+            showToast(`Downloading update v${data.version}...`, 'info');
+          } else if (data && data.status === 'downloaded') {
+            showToast(`Update v${data.version} downloaded and ready to install!`, 'success');
+          }
+        });
+      }
 
       focusScanner();
     }
@@ -3356,8 +3449,6 @@
       activities = [
         { id: 'ACT-1', type: 'add', title: 'Nike Air Max 270', size: '-', qty_change: '+16 pairs', time: now, details: 'Initial stock in BOX-001' }
       ];
-
-      saveToLocalCache();
     }
 
     // ============================================================
@@ -3471,8 +3562,22 @@
 
     function abbreviateType(typeStr) {
       if (!typeStr) return 'GEN';
-      const map = { 'Sports': 'SP', 'Sneakers': 'SNK', 'Loafers': 'LFR', 'Formal': 'FRM', 'Casual': 'CSL', 'Boots': 'BT', 'Sandals': 'SND' };
-      return map[typeStr] || typeStr.substring(0, 3).toUpperCase();
+      const map = {
+        'Sports': 'SP',
+        'Sneakers': 'SNK',
+        'Loafers': 'LFR',
+        'Formal': 'FRM',
+        'Casual': 'CSL',
+        'Boots': 'BT',
+        'Sandals': 'SND',
+        'Slippers': 'SLP',
+        'Belts': 'BLT',
+        'Wallets': 'WLT',
+        'Socks': 'SCK',
+        'Shoe Shiners': 'SHN',
+        'Perfume': 'PRF'
+      };
+      return map[typeStr] || typeStr.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
     }
 
     function abbreviateColor(cStr) {
@@ -3776,18 +3881,45 @@
     function renderProducts() {
       const container = document.getElementById('productTableContainer');
       if (!container) return;
-      const query = (document.getElementById('prodSearchInput') ? document.getElementById('prodSearchInput').value : '').toLowerCase().trim();
+      const rawQuery = (document.getElementById('prodSearchInput') ? document.getElementById('prodSearchInput').value : '').trim();
+      const normQ = normalizeSearchStr(rawQuery);
+      const lowerQ = rawQuery.toLowerCase();
 
-      const list = products.filter(p => {
+      let baseList = products.filter(p => {
         if (activeProductCategory && p.category !== activeProductCategory) return false;
-        if (!query) return true;
-        const pVars = getProductVariants(p.id);
-        const pBoxes = getProductBoxes(p.id);
-        const varsStr = pVars.map(v => `${v.variant_code} ${v.size} ${v.color} ${p.sku}-${v.color} ${p.sku}${v.color} ${p.sku}-${v.variant_code}`).join(' ');
-        const boxesStr = pBoxes.map(b => b.box_number).join(' ');
-        const searchStr = `${p.name} ${p.brand} ${p.category} ${p.sku} ${varsStr} ${boxesStr}`;
-        return smartSearchMatch(searchStr, query);
+        return true;
       });
+
+      let list = baseList;
+      if (rawQuery) {
+        // Exact unique SKU or Name match isolation
+        if (normQ) {
+          const exactMatches = baseList.filter(p => {
+            const sku = p.sku || '';
+            const name = p.name || '';
+            return (
+              normalizeSearchStr(sku) === normQ ||
+              sku.trim().toLowerCase() === lowerQ ||
+              normalizeSearchStr(name) === normQ ||
+              name.trim().toLowerCase() === lowerQ
+            );
+          });
+          if (exactMatches.length > 0) {
+            list = exactMatches;
+          } else {
+            list = baseList.filter(p => {
+              const pVars = getProductVariants(p.id);
+              const pBoxes = getProductBoxes(p.id);
+              const pPieces = inventory_items.filter(pi => pi.product_id === p.id);
+              const varsStr = pVars.map(v => `${v.variant_code || ''} ${v.size || ''} Sz ${v.size || ''} ${v.color || ''}`).join(' ');
+              const boxesStr = pBoxes.map(b => `${b.box_number || ''} ${b.barcode || ''}`).join(' ');
+              const piecesStr = pPieces.map(pi => `${pi.piece_code || ''} ${pi.barcode || ''}`).join(' ');
+              const searchStr = `${p.name || ''} ${p.brand || ''} ${p.category || ''} ${p.sku || ''} ${varsStr} ${boxesStr} ${piecesStr}`;
+              return smartSearchMatch(searchStr, rawQuery);
+            });
+          }
+        }
+      }
 
       if (!list.length) {
         container.innerHTML = `<div style="padding:24px; text-align:center;" class="muted">No products found matching your search.</div>`;
@@ -3818,7 +3950,7 @@
             <td><code>${p.sku}</code></td>
             <td>
               <div style="display:flex; flex-wrap:wrap; gap:3px;">
-                ${pVars.map(v => `<span class="variant-code-badge" title="Size ${v.size} / ${v.color}" style="font-weight:800; font-size:11.5px; color:#09090b;">Sz ${v.size}</span>`).join('')}
+                ${isNonFootwearCategory(p.category) ? '<span class="muted" style="font-size:12px; font-weight:700;">N/A</span>' : pVars.map(v => `<span class="variant-code-badge" title="Size ${v.size} / ${v.color}" style="font-weight:800; font-size:11.5px; color:#09090b;">Sz ${v.size}</span>`).join('')}
               </div>
             </td>
             <td class="num-cell" style="color:#475569; text-decoration:line-through; font-size:12.5px; font-weight:600;">${money(p.mrp)}</td>
@@ -3862,11 +3994,90 @@
       `;
     }
 
+    const PRODUCT_CATEGORIES = [
+      'Sports',
+      'Sneakers',
+      'Loafers',
+      'Formal',
+      'Casual',
+      'Boots',
+      'Sandals',
+      'Slippers',
+      'Belts',
+      'Wallets',
+      'Socks',
+      'Shoe Shiners',
+      'Perfume'
+    ];
+
+    function populateProductCategoryDropdown(selectedCategory) {
+      const select = document.getElementById('pCategory');
+      if (!select) return;
+      const cur = selectedCategory || select.value || 'Sports';
+      select.innerHTML = PRODUCT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+      select.value = PRODUCT_CATEGORIES.includes(cur) ? cur : 'Sports';
+    }
+
+    function isNonFootwearCategory(cat) {
+      if (!cat) return false;
+      const nonFootwear = ['belts', 'wallets', 'socks', 'shoe shiners', 'perfume'];
+      return nonFootwear.includes(String(cat).trim().toLowerCase());
+    }
+
+    function handleProductCategoryChange() {
+      const cat = (document.getElementById('pCategory') ? document.getElementById('pCategory').value : '') || 'Sports';
+      const isNonFootwear = isNonFootwearCategory(cat);
+      const varSection = document.getElementById('variantFormSection');
+      const boxSection = document.getElementById('boxFormSection');
+      const qtyRow = document.getElementById('nonFootwearQtyRow');
+      const modalTitle = document.getElementById('productModalTitle');
+      const isNew = !(document.getElementById('pId') && document.getElementById('pId').value);
+
+      if (isNonFootwear) {
+        if (varSection) varSection.style.display = 'none';
+        if (boxSection) boxSection.style.display = 'none';
+        if (qtyRow) qtyRow.style.display = 'block';
+        if (modalTitle) {
+          modalTitle.innerHTML = `<span class="material-symbols-outlined" style="color:var(--primary)">${isNew ? 'add_box' : 'edit'}</span> ${isNew ? 'Add Product' : 'Edit Product'}`;
+        }
+      } else {
+        if (varSection) varSection.style.display = 'block';
+        if (boxSection) boxSection.style.display = 'block';
+        if (qtyRow) qtyRow.style.display = 'none';
+        if (modalTitle) {
+          modalTitle.innerHTML = `<span class="material-symbols-outlined" style="color:var(--primary)">${isNew ? 'add_box' : 'edit'}</span> ${isNew ? 'Add Product & Stock Boxes' : 'Edit Product & Stock Boxes'}`;
+        }
+
+        // Restore default footwear variants if currently empty when creating a new footwear product
+        if (isNew && (!formVariants || formVariants.length === 0)) {
+          formVariants = [
+            { id: 'TEMP-VAR-1', size: '7', color: 'Black' },
+            { id: 'TEMP-VAR-2', size: '8', color: 'Black' },
+            { id: 'TEMP-VAR-3', size: '9', color: 'Black' },
+            { id: 'TEMP-VAR-4', size: '10', color: 'Black' }
+          ];
+          formBoxes = [
+            {
+              id: 'TEMP-BOX-1',
+              box_number: 'BOX-001',
+              barcode: 'BOX-' + String(Date.now()).slice(-7),
+              quantities: { 'TEMP-VAR-1': 3, 'TEMP-VAR-2': 4, 'TEMP-VAR-3': 4, 'TEMP-VAR-4': 3 }
+            }
+          ];
+          renderFormVariants();
+          renderFormBoxes();
+          calculateFormTotals();
+        }
+      }
+    }
+
     function openAddProductModal() {
-      document.getElementById('productModalTitle').innerHTML = `<span class="material-symbols-outlined" style="color:var(--primary)">add_box</span> Add Product & Stock Boxes`;
       document.getElementById('productForm').reset();
+      populateProductCategoryDropdown('Sports');
       document.getElementById('pId').value = '';
       document.getElementById('pLowThreshold').value = settings.defaultLowStock || 5;
+      const qtyInput = document.getElementById('pQuantity');
+      if (qtyInput) qtyInput.value = 1;
 
       formVariants = [
         { id: 'TEMP-VAR-1', size: '7', color: 'Black' },
@@ -3884,6 +4095,7 @@
         }
       ];
 
+      handleProductCategoryChange();
       renderFormVariants();
       renderFormBoxes();
       calculateFormTotals();
@@ -3894,42 +4106,64 @@
       const p = products.find(x => x.id === productId);
       if (!p) return;
 
-      document.getElementById('productModalTitle').innerHTML = `<span class="material-symbols-outlined" style="color:var(--primary)">edit</span> Edit Product & Stock Boxes`;
       document.getElementById('pId').value = p.id;
       document.getElementById('pName').value = p.name;
       document.getElementById('pSku').value = p.sku;
       document.getElementById('pBrand').value = p.brand;
-      document.getElementById('pCategory').value = p.category || 'Sports';
+      populateProductCategoryDropdown(p.category || 'Sports');
       document.getElementById('pCost').value = p.cost;
       document.getElementById('pPrice').value = p.price;
       document.getElementById('pMrp').value = p.mrp;
       document.getElementById('pLowThreshold').value = p.low_stock_threshold || 5;
 
-      formVariants = getProductVariants(p.id).map(v => ({ id: v.id, size: v.size, color: v.color, variant_code: v.variant_code }));
-      const prodBoxes = getProductBoxes(p.id);
-      formBoxes = (prodBoxes.length ? prodBoxes : [{ id: 'TEMP-BOX-1', box_number: 'BOX-001', barcode: 'BOX-' + String(Date.now()).slice(-7) }]).map(b => {
-        const qtys = {};
-        formVariants.forEach(v => {
-          qtys[v.id] = inventory_items.filter(pi => pi.box_id === b.id && pi.variant_id === v.id && pi.status === 'In Stock').length;
-        });
-        return { id: b.id, box_number: b.box_number, barcode: b.barcode, quantities: qtys };
-      });
+      const isNonFootwear = isNonFootwearCategory(p.category);
+      const currentStock = getProductTotalStock(p.id);
+      const qtyInput = document.getElementById('pQuantity');
+      if (qtyInput) qtyInput.value = currentStock;
 
-      renderFormVariants();
-      renderFormBoxes();
-      calculateFormTotals();
+      handleProductCategoryChange();
+
+      if (!isNonFootwear) {
+        formVariants = getProductVariants(p.id).map(v => ({ id: v.id, size: v.size, color: v.color, variant_code: v.variant_code }));
+        const prodBoxes = getProductBoxes(p.id);
+        formBoxes = (prodBoxes.length ? prodBoxes : [{ id: 'TEMP-BOX-1', box_number: 'BOX-001', barcode: 'BOX-' + String(Date.now()).slice(-7) }]).map(b => {
+          const qtys = {};
+          formVariants.forEach(v => {
+            qtys[v.id] = inventory_items.filter(pi => pi.box_id === b.id && pi.variant_id === v.id && pi.status === 'In Stock').length;
+          });
+          return { id: b.id, box_number: b.box_number, barcode: b.barcode, quantities: qtys };
+        });
+
+        renderFormVariants();
+        renderFormBoxes();
+        calculateFormTotals();
+      }
+
       document.getElementById('productFormModal').classList.add('active');
     }
 
     function addVariantRow() {
-      const sz = (document.getElementById('newVarSize').value || '').trim();
+      let sz = (document.getElementById('newVarSize').value || '').trim();
       const cl = (document.getElementById('newVarColor').value || '').trim();
-      if (!sz || !cl) {
-        showToast('Please enter both Size and Colour.', 'warning');
-        return;
-      }
-      const pName = document.getElementById('pName').value.trim() || 'Shoe';
       const cat = document.getElementById('pCategory').value || 'Sports';
+      const isNonFootwear = isNonFootwearCategory(cat);
+
+      if (!isNonFootwear) {
+        if (!sz || !cl) {
+          showToast('Please enter both Size and Colour for footwear products.', 'warning');
+          return;
+        }
+      } else {
+        if (!cl) {
+          showToast('Please enter Colour / Variant name.', 'warning');
+          return;
+        }
+        if (!sz) {
+          sz = 'Free Size';
+        }
+      }
+
+      const pName = document.getElementById('pName').value.trim() || 'Product';
       const code = generateVariantCode(pName, cat, cl, sz);
 
       formVariants.push({ id: 'TEMP-VAR-' + Date.now() + Math.random().toString(36).slice(2, 5), size: sz, color: cl, variant_code: code });
@@ -3951,16 +4185,19 @@
       const container = document.getElementById('variantsContainer');
       if (!container) return;
       if (!formVariants.length) {
-        container.innerHTML = `<span class="muted" style="font-size:12px;">No variants defined. Add size & colour below.</span>`;
+        container.innerHTML = `<span class="muted" style="font-size:12px;">No variants defined. Add variant below.</span>`;
         return;
       }
-      container.innerHTML = formVariants.map(v => `
+      container.innerHTML = formVariants.map(v => {
+        const sizeLabel = (v.size && v.size !== 'Free Size' && v.size !== 'N/A' && v.size !== '-') ? `Size <b>${v.size}</b> / ` : (v.size ? `<b>${v.size}</b> / ` : '');
+        return `
         <span class="variant-code-badge" style="display:inline-flex; align-items:center; gap:6px; padding:3px 7px;">
-          <span>Size <b>${v.size}</b> / ${v.color}</span>
+          <span>${sizeLabel}${v.color}</span>
           <code style="color:var(--primary); font-size:10px;">${v.variant_code || '-'}</code>
           <span class="material-symbols-outlined" style="font-size:14px; cursor:pointer; color:#dc2626;" onclick="removeVariantRow('${v.id}')">close</span>
         </span>
-      `).join('');
+      `;
+      }).join('');
     }
 
     function addNewBoxToForm() {
@@ -4003,9 +4240,10 @@
         const inputs = formVariants.map(v => {
           const q = (b.quantities && b.quantities[v.id]) || 0;
           boxTotal += q;
+          const label = (v.size && v.size !== 'Free Size' && v.size !== 'N/A' && v.size !== '-') ? `Sz ${v.size} / ${v.color}` : `${v.color}${v.size ? ' (' + v.size + ')' : ''}`;
           return `
             <div style="background:#ffffff; border:1px solid var(--border-color); border-radius:4px; padding:4px; text-align:center;">
-              <div style="font-size:11px; font-weight:700;">Sz ${v.size} / ${v.color}</div>
+              <div style="font-size:11px; font-weight:700;">${label}</div>
               <input type="number" min="0" value="${q}" style="text-align:center; padding:3px; font-weight:800; font-size:13px; margin-top:2px;" oninput="updateFormBoxQty('${b.id}', '${v.id}', this.value)">
             </div>
           `;
@@ -4019,7 +4257,7 @@
                 <span class="muted" style="font-size:11px; margin-left:8px;">Barcode: <code>${b.barcode}</code></span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:12px; font-weight:800; color:var(--primary);">Box Total: ${boxTotal} pairs</span>
+                <span style="font-size:12px; font-weight:800; color:var(--primary);">Box Total: ${boxTotal} pairs/units</span>
                 ${formBoxes.length > 1 ? `<button type="button" class="btn sm icon-only" style="color:#dc2626;" onclick="removeBoxFromForm('${b.id}')"><span class="material-symbols-outlined" style="font-size:16px;">delete</span></button>` : ''}
               </div>
             </div>
@@ -4051,12 +4289,13 @@
       const cost = Number(document.getElementById('pCost').value || 0);
       const mrp = Number(document.getElementById('pMrp').value || price);
       const lowThreshold = Number(document.getElementById('pLowThreshold').value || 5);
+      const isNonFootwear = isNonFootwearCategory(category);
 
       if (!name || !brand || price <= 0) {
         showToast('Please enter valid product name, brand, and selling price.', 'error');
         return;
       }
-      if (!formVariants.length) {
+      if (!isNonFootwear && !formVariants.length) {
         showToast('Please add at least one Size / Colour variant.', 'warning');
         return;
       }
@@ -4079,71 +4318,124 @@
         created_at: now
       };
 
-      const mappedVariants = [];
-      const varIdMap = {};
-      formVariants.forEach(v => {
-        const realVarId = v.id.startsWith('TEMP-') ? ('VAR-' + Date.now() + Math.random().toString(36).slice(2, 5)) : v.id;
-        varIdMap[v.id] = realVarId;
-        const code = v.variant_code || generateVariantCode(name, category, v.color, v.size, realVarId);
-        mappedVariants.push({
-          id: realVarId,
+      let mappedVariants = [];
+      let mappedBoxes = [];
+      let mappedBoxItems = [];
+      let mappedPieces = [];
+
+      if (isNonFootwear) {
+        const qty = Math.max(0, parseInt(document.getElementById('pQuantity').value, 10) || 0);
+        const existingVar = variants.find(v => v.product_id === productId);
+        const varId = existingVar ? existingVar.id : ('VAR-' + productId);
+        const varCode = sku || ('VAR-' + productId);
+
+        mappedVariants = [{
+          id: varId,
           product_id: productId,
-          size: v.size,
-          color: v.color,
-          variant_code: code
-        });
-      });
+          size: '-',
+          color: '-',
+          variant_code: varCode
+        }];
 
-      const mappedBoxes = [];
-      const mappedBoxItems = [];
-      const mappedPieces = [];
-      const variantSeqMap = {};
-
-      formBoxes.forEach(b => {
-        const realBoxId = b.id.startsWith('TEMP-') ? ('BOX-' + Date.now() + Math.random().toString(36).slice(2, 5)) : b.id;
-        mappedBoxes.push({
-          id: realBoxId,
-          box_number: b.box_number,
-          barcode: b.barcode || ('BOX-' + String(Date.now()).slice(-7)),
+        const boxId = 'BOX-' + productId;
+        mappedBoxes = [{
+          id: boxId,
+          box_number: 'MAIN',
+          barcode: 'BOX-' + String(Date.now()).slice(-7),
           created_at: now
-        });
+        }];
 
-        formVariants.forEach(v => {
-          const realVarId = varIdMap[v.id];
-          const qty = (b.quantities && b.quantities[v.id]) || 0;
-          mappedBoxItems.push({
-            id: `BI-${realBoxId}-${realVarId}`,
-            box_id: realBoxId,
-            variant_id: realVarId,
-            quantity: qty
-          });
+        mappedBoxItems = [{
+          id: `BI-${boxId}-${varId}`,
+          box_id: boxId,
+          variant_id: varId,
+          quantity: qty
+        }];
 
-          const vObj = mappedVariants.find(x => x.id === realVarId);
-          variantSeqMap[realVarId] = variantSeqMap[realVarId] || 0;
-          for (let i = 1; i <= qty; i++) {
-            variantSeqMap[realVarId]++;
-            const seq = String(variantSeqMap[realVarId]).padStart(3, '0');
-            const pCode = `${vObj.variant_code}-${seq}`;
+        const existingInStockPieces = inventory_items.filter(pi => pi.product_id === productId && pi.status === 'In Stock');
+        const existingCount = existingInStockPieces.length;
+
+        if (qty <= existingCount) {
+          mappedPieces = existingInStockPieces.slice(0, qty);
+        } else {
+          mappedPieces = [...existingInStockPieces];
+          for (let i = existingCount + 1; i <= qty; i++) {
+            const pCode = `${sku}-${String(i).padStart(3, '0')}`;
             mappedPieces.push({
-              id: `PIECE-${realVarId}-${realBoxId}-${i}`,
-              variant_id: realVarId,
+              id: `PIECE-${varId}-${Date.now()}-${i}`,
+              variant_id: varId,
               product_id: productId,
               piece_code: pCode,
               barcode: pCode,
-              box_id: realBoxId,
+              box_id: boxId,
               status: 'In Stock',
               created_at: now
             });
           }
+        }
+      } else {
+        const varIdMap = {};
+        formVariants.forEach(v => {
+          const realVarId = v.id.startsWith('TEMP-') ? ('VAR-' + Date.now() + Math.random().toString(36).slice(2, 5)) : v.id;
+          varIdMap[v.id] = realVarId;
+          const code = v.variant_code || generateVariantCode(name, category, v.color, v.size, realVarId);
+          mappedVariants.push({
+            id: realVarId,
+            product_id: productId,
+            size: v.size,
+            color: v.color,
+            variant_code: code
+          });
         });
-      });
+
+        const variantSeqMap = {};
+        formBoxes.forEach(b => {
+          const realBoxId = b.id.startsWith('TEMP-') ? ('BOX-' + Date.now() + Math.random().toString(36).slice(2, 5)) : b.id;
+          mappedBoxes.push({
+            id: realBoxId,
+            box_number: b.box_number,
+            barcode: b.barcode || ('BOX-' + String(Date.now()).slice(-7)),
+            created_at: now
+          });
+
+          formVariants.forEach(v => {
+            const realVarId = varIdMap[v.id];
+            const qty = (b.quantities && b.quantities[v.id]) || 0;
+            mappedBoxItems.push({
+              id: `BI-${realBoxId}-${realVarId}`,
+              box_id: realBoxId,
+              variant_id: realVarId,
+              quantity: qty
+            });
+
+            const vObj = mappedVariants.find(x => x.id === realVarId);
+            variantSeqMap[realVarId] = variantSeqMap[realVarId] || 0;
+            for (let i = 1; i <= qty; i++) {
+              variantSeqMap[realVarId]++;
+              const seq = String(variantSeqMap[realVarId]).padStart(3, '0');
+              const pCode = `${vObj.variant_code}-${seq}`;
+              mappedPieces.push({
+                id: `PIECE-${realVarId}-${realBoxId}-${i}`,
+                variant_id: realVarId,
+                product_id: productId,
+                piece_code: pCode,
+                barcode: pCode,
+                box_id: realBoxId,
+                status: 'In Stock',
+                created_at: now
+              });
+            }
+          });
+        });
+      }
 
       const payload = {
         product: prodObj,
         variants: mappedVariants,
         boxes: mappedBoxes,
         box_items: mappedBoxItems,
-        inventory_pieces: mappedPieces
+        inventory_pieces: mappedPieces,
+        is_non_footwear: isNonFootwear
       };
 
       try {
@@ -4169,7 +4461,17 @@
         else products.unshift(prodObj);
 
         variants = variants.filter(x => x.product_id !== productId).concat(mappedVariants);
-        inventory_items = inventory_items.filter(x => x.product_id !== productId).concat(mappedPieces);
+        if (isNonFootwear) {
+          const keepIds = new Set(mappedPieces.map(pi => pi.id));
+          inventory_items = inventory_items.filter(pi => pi.product_id !== productId || pi.status !== 'In Stock' || keepIds.has(pi.id));
+          mappedPieces.forEach(pi => {
+            const idx = inventory_items.findIndex(x => x.id === pi.id);
+            if (idx >= 0) inventory_items[idx] = pi;
+            else inventory_items.push(pi);
+          });
+        } else {
+          inventory_items = inventory_items.filter(x => x.product_id !== productId).concat(mappedPieces);
+        }
       }
 
       saveToLocalCache();
@@ -4333,9 +4635,10 @@
       document.getElementById('invSoldPairs').textContent = soldPairs;
 
       // Populate Category Filter
+      const defaultCategories = ['Sports', 'Sneakers', 'Loafers', 'Formal', 'Casual', 'Boots', 'Sandals', 'Slippers', 'Belts', 'Wallets', 'Socks', 'Shoe Shiners', 'Perfume'];
       const catSelect = document.getElementById('invCatFilter');
       if (catSelect && catSelect.options.length <= 1) {
-        const cats = Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort();
+        const cats = Array.from(new Set([...defaultCategories, ...products.map(p => p.category).filter(Boolean)])).sort();
         cats.forEach(c => {
           const opt = document.createElement('option');
           opt.value = c;
@@ -4344,15 +4647,52 @@
         });
       }
 
-      const list = inventory_items.filter(pi => {
+      const rawQuery = (document.getElementById('invSearch') ? document.getElementById('invSearch').value : '').trim();
+      const normQ = normalizeSearchStr(rawQuery);
+      const lowerQ = rawQuery.toLowerCase();
+
+      let baseList = inventory_items.filter(pi => {
         if (statusFilter && pi.status !== statusFilter) return false;
         const p = products.find(x => x.id === pi.product_id) || {};
         if (catFilter && p.category !== catFilter) return false;
-        const v = variants.find(x => x.id === pi.variant_id) || {};
-        const b = boxes.find(x => x.id === pi.box_id) || {};
-        const str = `${pi.piece_code} ${pi.barcode} ${v.variant_code || ''} ${p.name || ''} ${p.sku || ''} ${p.brand || ''} ${p.category || ''} ${v.size || ''} Sz ${v.size || ''} Size ${v.size || ''} ${v.color || ''} ${b.box_number || ''} ${b.barcode || ''} ${p.sku}-${v.color || ''} ${p.sku}${v.color || ''} ${p.sku}-${v.variant_code || ''} ${p.sku}${v.variant_code || ''} ${p.sku}-${v.size || ''} ${p.sku}${v.size || ''}`;
-        return smartSearchMatch(str, query);
+        return true;
       });
+
+      let list = baseList;
+      if (rawQuery) {
+        // Exact unique match on piece_code, barcode, SKU, or variant_code
+        if (normQ) {
+          const exactMatches = baseList.filter(pi => {
+            const p = products.find(x => x.id === pi.product_id) || {};
+            const v = variants.find(x => x.id === pi.variant_id) || {};
+            const pc = pi.piece_code || '';
+            const bc = pi.barcode || '';
+            const sku = p.sku || '';
+            const vc = v.variant_code || '';
+            return (
+              normalizeSearchStr(pc) === normQ ||
+              pc.trim().toLowerCase() === lowerQ ||
+              normalizeSearchStr(bc) === normQ ||
+              bc.trim().toLowerCase() === lowerQ ||
+              normalizeSearchStr(sku) === normQ ||
+              sku.trim().toLowerCase() === lowerQ ||
+              normalizeSearchStr(vc) === normQ ||
+              vc.trim().toLowerCase() === lowerQ
+            );
+          });
+          if (exactMatches.length > 0) {
+            list = exactMatches;
+          } else {
+            list = baseList.filter(pi => {
+              const p = products.find(x => x.id === pi.product_id) || {};
+              const v = variants.find(x => x.id === pi.variant_id) || {};
+              const b = boxes.find(x => x.id === pi.box_id) || {};
+              const str = `${pi.piece_code || ''} ${pi.barcode || ''} ${v.variant_code || ''} ${p.name || ''} ${p.sku || ''} ${p.brand || ''} ${p.category || ''} ${v.size || ''} Sz ${v.size || ''} Size ${v.size || ''} ${v.color || ''} ${b.box_number || ''} ${b.barcode || ''} ${p.sku}-${v.color || ''} ${p.sku}${v.color || ''} ${p.sku}-${v.variant_code || ''} ${p.sku}${v.variant_code || ''} ${p.sku}-${v.size || ''} ${p.sku}${v.size || ''}`;
+              return smartSearchMatch(str, rawQuery);
+            });
+          }
+        }
+      }
 
       if (!list.length) {
         container.innerHTML = `<div style="padding:24px; text-align:center;" class="muted">No matching inventory pieces found.</div>`;
@@ -4930,6 +5270,87 @@
       if (scanInput) scanInput.select();
     }
 
+    function openManualBillModal(isFresh = false) {
+      if (isFresh) {
+        if (currentBill.length > 0) {
+          if (!confirm('Start a fresh bill? This will clear items currently on the bill.')) {
+            return;
+          }
+          currentBill = [];
+          setBillingScanMode(false);
+          document.getElementById('overallDiscountInput').value = 0;
+          document.getElementById('cashReceivedInput').value = '';
+          document.getElementById('cashChangeDisplay').textContent = '₹0';
+          renderBill();
+        }
+      }
+
+      const titleEl = document.getElementById('manualBillModalTitle');
+      if (titleEl) {
+        titleEl.innerHTML = `<span class="material-symbols-outlined" style="color:var(--primary)">${isFresh ? 'post_add' : 'edit_note'}</span> ${isFresh ? 'Fresh Bill — Add Item' : 'Add Manual Item (No Inventory)'}`;
+      }
+
+      document.getElementById('manualItemName').value = '';
+      document.getElementById('manualItemQty').value = 1;
+      document.getElementById('manualItemPrice').value = '';
+
+      document.getElementById('manualBillItemModal').classList.add('active');
+      setTimeout(() => {
+        const input = document.getElementById('manualItemName');
+        if (input) input.focus();
+      }, 80);
+    }
+
+    function addManualItemToBillAction(andAnother = false) {
+      const name = (document.getElementById('manualItemName').value || '').trim();
+      const qty = Math.max(1, parseInt(document.getElementById('manualItemQty').value, 10) || 1);
+      const priceVal = document.getElementById('manualItemPrice').value;
+      const price = priceVal === '' ? NaN : Number(priceVal);
+
+      if (!name) {
+        showToast('Please enter an item or product name.', 'warning');
+        document.getElementById('manualItemName').focus();
+        return;
+      }
+      if (isNaN(price) || price < 0) {
+        showToast('Please enter a valid selling price.', 'warning');
+        document.getElementById('manualItemPrice').focus();
+        return;
+      }
+
+      const manualItem = {
+        piece_id: null,
+        piece_code: '',
+        product_id: null,
+        variant_id: null,
+        name: name,
+        sku: '',
+        brand: 'Manual',
+        size: '-',
+        color: '',
+        box_number: '-',
+        mrp: price,
+        selling_price: price,
+        quantity: qty,
+        discount: 0,
+        is_return: false,
+        is_manual: true
+      };
+
+      addBillItem(manualItem);
+      showToast(`Added "${name}" (Qty: ${qty}) to bill.`, 'success');
+
+      if (andAnother) {
+        document.getElementById('manualItemName').value = '';
+        document.getElementById('manualItemQty').value = 1;
+        document.getElementById('manualItemPrice').value = '';
+        document.getElementById('manualItemName').focus();
+      } else {
+        closeModal('manualBillItemModal');
+        focusScanner();
+      }
+    }
+
     function addBillItem(item, showNotification = true) {
       item.id = 'ITEM-' + Date.now() + Math.random().toString(36).slice(2, 6);
       item.is_return = Boolean(item.is_return);
@@ -4938,10 +5359,11 @@
       currentBill.push(item);
       renderBill();
       if (showNotification) {
+        const sz = (item.size && item.size !== '-' && item.size !== 'N/A') ? ` (Sz ${item.size})` : '';
         if (item.is_return) {
-          showToast(`Added [EXCHANGE RETURN] ${item.name} (Sz ${item.size}): -${money(Math.abs(item.amount))}`, 'info');
+          showToast(`Added [EXCHANGE RETURN] ${item.name}${sz}: -${money(Math.abs(item.amount))}`, 'info');
         } else {
-          showToast(`Added ${item.name} (Sz ${item.size}) - ${money(item.selling_price)}`, 'success');
+          showToast(`Added ${item.name}${sz} - ${money(item.selling_price)}`, 'success');
         }
       }
     }
@@ -4962,7 +5384,7 @@
       if (!item) return;
 
       const requestedQty = Math.max(1, parseInt(newQtyStr, 10) || 1);
-      if (!item.is_return) {
+      if (!item.is_return && !item.is_manual) {
         const totalAvailable = item.variant_id ? getVariantStock(item.variant_id) : getProductTotalStock(item.product_id);
         if (requestedQty > totalAvailable) {
           showToast(`Only ${totalAvailable} pairs available in stock for this model!`, 'warning');
@@ -4981,7 +5403,7 @@
     function incrementBillQty(index) {
       const item = currentBill[index];
       if (!item) return;
-      if (!item.is_return) {
+      if (!item.is_return && !item.is_manual) {
         const totalAvailable = item.variant_id ? getVariantStock(item.variant_id) : getProductTotalStock(item.product_id);
         if (item.quantity + 1 > totalAvailable) {
           showToast(`Cannot exceed available inventory (${totalAvailable} pairs in stock).`, 'warning');
@@ -5067,13 +5489,14 @@
           <td>
             <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
               ${item.is_return ? '<span class="badge" style="background:#fef2f2; color:#b91c1c; border:1.5px solid #fecaca; font-weight:800; font-size:10px; padding:1px 5px;">↩ EXCHANGE RETURN</span>' : ''}
+              ${item.is_manual ? '<span class="badge" style="background:#f0fdf4; color:#15803d; border:1.5px solid #bbf7d0; font-weight:800; font-size:10px; padding:1px 5px;">MANUAL</span>' : ''}
               <span style="font-weight:900; font-size:14.5px; color:#09090b;">${item.name}</span>
             </div>
-            <div style="font-size:12px; color:#334155; font-weight:700; margin-top:2px;">${item.brand} • <b class="piece-tag" style="font-weight:900;">${item.piece_code || item.sku}</b></div>
+            <div style="font-size:12px; color:#334155; font-weight:700; margin-top:2px;">${item.brand && item.brand !== 'Manual' ? item.brand + ' • ' : ''}<b class="piece-tag" style="font-weight:900;">${item.piece_code || item.sku || (item.is_manual ? 'Manual Item' : 'DIRECT')}</b></div>
           </td>
           <td style="text-align:center;">
-            <span class="variant-code-badge" style="font-size:12px; font-weight:800;">Sz ${item.size}</span>
-            <div style="font-size:11px; font-weight:700; color:#334155; margin-top:2px;">${item.box_number}</div>
+            <span class="variant-code-badge" style="font-size:12px; font-weight:800;">${(item.size && item.size !== '-' && item.size !== 'N/A') ? 'Sz ' + item.size : '-'}</span>
+            ${(item.box_number && item.box_number !== '-' && item.box_number !== 'DIRECT') ? `<div style="font-size:11px; font-weight:700; color:#334155; margin-top:2px;">${item.box_number}</div>` : ''}
           </td>
           <td style="text-align:center;">
             <div style="display:inline-flex; align-items:center; gap:2px;">
@@ -5274,13 +5697,13 @@
         piece_id: it.piece_id || null,
         piece_code: it.piece_code || '',
         product_name_snapshot: it.name,
-        size_snapshot: it.size,
-        colour_snapshot: it.color,
-        box_number_snapshot: it.box_number,
-        mrp_snapshot: it.mrp,
+        size_snapshot: (it.size && it.size !== '-') ? it.size : '',
+        colour_snapshot: (it.color && it.color !== '-') ? it.color : '',
+        box_number_snapshot: (it.box_number && it.box_number !== '-') ? it.box_number : '',
+        mrp_snapshot: it.mrp || it.selling_price || 0,
         price_at_sale: it.selling_price,
         quantity: it.quantity,
-        discount: it.discount,
+        discount: it.discount || 0,
         amount: it.is_return ? -Math.abs(it.amount) : Math.abs(it.amount),
         is_return: it.is_return ? 1 : 0
       }));
@@ -5289,7 +5712,7 @@
       const returnedPieceIds = [];
 
       currentBill.forEach(it => {
-        if (it.piece_id) {
+        if (it.piece_id && !it.is_manual) {
           if (it.is_return) {
             returnedPieceIds.push(it.piece_id);
           } else {
@@ -5374,13 +5797,18 @@
           salesSubtotal += (it.price_at_sale * it.quantity) - (it.discount || 0);
         }
 
+        const sizeText = (it.size_snapshot && it.size_snapshot !== '-' && it.size_snapshot !== 'N/A') ? `Sz ${it.size_snapshot}` : '';
+        const colText = (it.colour_snapshot && it.colour_snapshot !== '-' && it.colour_snapshot !== 'Standard') ? `/${it.colour_snapshot}` : '';
+        const tagText = it.piece_code ? `• ${it.piece_code}` : '';
+        const detailSub = [sizeText + colText, tagText].filter(Boolean).join(' ').trim();
+
         return `
           <tr>
             <td>
               <div style="font-weight:700;">
                 ${isReturn ? '<span style="border:1px solid #000; padding:0 2px; font-size:6.5pt; font-weight:900;">[EXCHANGE RETURN]</span> ' : ''}${it.product_name_snapshot}
               </div>
-              <div style="font-size:7.5pt;">Sz ${it.size_snapshot} ${it.colour_snapshot ? '/' + it.colour_snapshot : ''} ${it.piece_code ? '• ' + it.piece_code : ''}</div>
+              ${detailSub ? `<div style="font-size:7.5pt;">${detailSub}</div>` : ''}
             </td>
             <td style="text-align:center;">${it.quantity}</td>
             <td style="text-align:right;">${money(it.price_at_sale)}</td>
@@ -5529,7 +5957,9 @@
     function renderSalesHistory() {
       const container = document.getElementById('salesHistoryTableContainer');
       if (!container) return;
-      const query = (document.getElementById('salesSearchInput').value || '').toLowerCase().trim();
+      const rawQuery = (document.getElementById('salesSearchInput') ? document.getElementById('salesSearchInput').value : '').trim();
+      const normQ = normalizeSearchStr(rawQuery);
+      const lowerQ = rawQuery.toLowerCase();
       const customDate = document.getElementById('salesDateFilter').value;
       const payFilter = document.getElementById('salesPaymentFilter').value;
 
@@ -5539,31 +5969,60 @@
       const weekAgoStr = new Date(now.getTime() - 7 * 86400000).toISOString();
       const monthPrefix = todayStr.slice(0, 7);
 
-      const list = sales.filter(s => {
-        if (customDate && (s.date || '').slice(0, 10) !== customDate) return false;
-        if (!customDate && !query) {
-          if (salesDatePreset === 'today' && (s.date || '').slice(0, 10) !== todayStr) return false;
-          if (salesDatePreset === 'yesterday' && (s.date || '').slice(0, 10) !== yesterdayStr) return false;
-          if (salesDatePreset === 'week' && (s.date || '') < weekAgoStr) return false;
-          if (salesDatePreset === 'month' && (s.date || '').slice(0, 7) !== monthPrefix) return false;
-        }
+      let list = [];
 
-        if (payFilter && s.payment_method !== payFilter) return false;
-
-        if (query) {
-          const itemsStr = (s.items || []).map(it => {
-            const v = variants.find(x => x.id === it.variant_id) || {};
-            const p = products.find(x => x.id === v.product_id) || products.find(x => x.name === it.product_name_snapshot) || {};
-            const itemSku = it.sku || p.sku || '';
-            const itemCode = it.piece_code || '';
-            const vCode = v.variant_code || '';
-            return `${it.product_name_snapshot || ''} ${itemSku} ${itemCode} ${vCode} ${it.size_snapshot || ''} ${it.colour_snapshot || ''} ${p.brand || ''} ${p.category || ''} ${p.sku ? p.sku + '-' + (it.colour_snapshot || '') : ''} ${p.sku ? p.sku + (it.colour_snapshot || '') : ''} ${p.sku ? p.sku + '-' + (it.size_snapshot || '') : ''} ${p.sku ? p.sku + (it.size_snapshot || '') : ''}`;
-          }).join(' ');
-          const fullStr = `${s.bill_number} ${s.payment_method} ${s.cashier_notes || ''} ${itemsStr}`;
-          if (!smartSearchMatch(fullStr, query)) return false;
+      // Check if query uniquely matches an exact bill number
+      if (rawQuery && normQ) {
+        const exactBillMatches = sales.filter(s => {
+          const bn = s.bill_number || '';
+          return normalizeSearchStr(bn) === normQ || bn.trim().toLowerCase() === lowerQ;
+        });
+        if (exactBillMatches.length > 0) {
+          list = exactBillMatches;
+          if (customDate) list = list.filter(s => (s.date || '').slice(0, 10) === customDate);
+          if (payFilter) list = list.filter(s => s.payment_method === payFilter);
         }
-        return true;
-      });
+      }
+
+      if (!rawQuery || list.length === 0) {
+        list = sales.filter(s => {
+          if (customDate && (s.date || '').slice(0, 10) !== customDate) return false;
+          if (!customDate && !rawQuery) {
+            if (salesDatePreset === 'today' && (s.date || '').slice(0, 10) !== todayStr) return false;
+            if (salesDatePreset === 'yesterday' && (s.date || '').slice(0, 10) !== yesterdayStr) return false;
+            if (salesDatePreset === 'week' && (s.date || '') < weekAgoStr) return false;
+            if (salesDatePreset === 'month' && (s.date || '').slice(0, 7) !== monthPrefix) return false;
+          }
+
+          if (payFilter && s.payment_method !== payFilter) return false;
+
+          if (rawQuery) {
+            const bn = s.bill_number || '';
+            const normBn = normalizeSearchStr(bn);
+            const lowerBn = bn.toLowerCase();
+
+            // 1. Partial/incremental match on bill number (e.g. "MSC 0" matches "MSC 00010" and "msc00010")
+            if (normQ && normBn.includes(normQ)) return true;
+            if (lowerBn.includes(lowerQ)) return true;
+
+            // 2. Search across items, cashier notes, payment method
+            const itemsStr = (s.items || []).map(it => {
+              const v = variants.find(x => x.id === it.variant_id) || {};
+              const p = products.find(x => x.id === v.product_id) || products.find(x => x.name === it.product_name_snapshot) || {};
+              const itemSku = it.sku || p.sku || '';
+              const itemCode = it.piece_code || '';
+              const vCode = v.variant_code || '';
+              return `${it.product_name_snapshot || ''} ${itemSku} ${itemCode} ${vCode} ${it.size_snapshot || ''} ${it.colour_snapshot || ''} ${p.brand || ''} ${p.category || ''}`;
+            }).join(' ');
+
+            const fullStr = `${s.payment_method || ''} ${s.cashier_notes || ''} ${itemsStr}`;
+            if (smartSearchMatch(fullStr, rawQuery)) return true;
+
+            return false;
+          }
+          return true;
+        });
+      }
 
       // Update Summary Bar
       const totalRev = list.reduce((sum, s) => sum + Number(s.grand_total || 0), 0);
@@ -5620,6 +6079,8 @@
       const itemsList = sale.items || [];
       const itemRows = itemsList.map((it, idx) => {
         const isReturn = Boolean(it.is_return || it.amount < 0);
+        const sizeDisp = (it.size_snapshot && it.size_snapshot !== '-' && it.size_snapshot !== 'N/A') ? `Sz ${it.size_snapshot}` : '-';
+        const colDisp = (it.colour_snapshot && it.colour_snapshot !== '-' && it.colour_snapshot !== 'Standard') ? ` / ${it.colour_snapshot}` : '';
         return `
         <tr class="${isReturn ? 'exchange-item-row' : ''}">
           <td style="font-weight:700; color:#334155;">${idx + 1}</td>
@@ -5628,7 +6089,7 @@
             <b style="font-size:14px; font-weight:900; color:#09090b;">${it.product_name_snapshot}</b>
             <div style="font-size:12px; font-weight:700; color:#334155; margin-top:2px;">${it.piece_code ? 'Tag: <b class="piece-tag">' + it.piece_code + '</b>' : ''}</div>
           </td>
-          <td><b style="font-size:13px; font-weight:800; color:#09090b;">Sz ${it.size_snapshot}</b> <span style="font-weight:700; color:#1e293b;">${it.colour_snapshot ? '/' + it.colour_snapshot : ''}</span></td>
+          <td><b style="font-size:13px; font-weight:800; color:#09090b;">${sizeDisp}</b><span style="font-weight:700; color:#1e293b;">${colDisp}</span></td>
           <td style="text-align:center;"><b style="font-size:13.5px; font-weight:900; color:#09090b;">${it.quantity}</b></td>
           <td class="num-cell"><b style="font-size:13.5px; font-weight:800; color:#09090b;">${money(it.price_at_sale)}</b></td>
           <td class="num-cell"><b style="font-size:14.5px; font-weight:900; color:${isReturn ? '#dc2626' : '#09090b'};">${isReturn ? '-' : ''}${money(Math.abs(it.amount))}</b></td>
@@ -5748,9 +6209,10 @@
 
     function renderReports() {
       // 1. Populate Category Filter Dropdown if not populated
+      const defaultCategories = ['Sports', 'Sneakers', 'Loafers', 'Formal', 'Casual', 'Boots', 'Sandals', 'Slippers', 'Belts', 'Wallets', 'Socks', 'Shoe Shiners', 'Perfume'];
       const catSelect = document.getElementById('repCategoryFilter');
       if (catSelect && catSelect.options.length <= 1) {
-        const cats = Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort();
+        const cats = Array.from(new Set([...defaultCategories, ...products.map(p => p.category).filter(Boolean)])).sort();
         cats.forEach(c => {
           const opt = document.createElement('option');
           opt.value = c;
@@ -6064,7 +6526,7 @@
       const container = document.getElementById('repTopCategoriesContainer');
       if (!container) return;
 
-      const standardCats = ['Sports', 'Sneakers', 'Loafers', 'Formal', 'Casual', 'Boots', 'Sandals'];
+      const standardCats = ['Sports', 'Sneakers', 'Loafers', 'Formal', 'Casual', 'Boots', 'Sandals', 'Slippers', 'Belts', 'Wallets', 'Socks', 'Shoe Shiners', 'Perfume'];
       const catMap = {};
       standardCats.forEach(c => catMap[c] = { name: c, pairs: 0, revenue: 0 });
 
@@ -6409,23 +6871,38 @@
       const sizeVal = (document.getElementById('lblFilterSize') || {}).value || '';
       const bId = (document.getElementById('lblFilterBox') || {}).value || '';
       const status = (document.getElementById('lblFilterStatus') || {}).value || '';
-      const query = ((document.getElementById('lblSearchInput') || {}).value || '').toLowerCase().trim();
+      const rawQuery = ((document.getElementById('lblSearchInput') || {}).value || '').trim();
+      const normQ = normalizeSearchStr(rawQuery);
+      const lowerQ = rawQuery.toLowerCase();
 
-      return inventory_items.filter(item => {
+      let baseList = inventory_items.filter(item => {
         const v = variants.find(x => x.id === item.variant_id) || {};
-        const p = products.find(x => x.id === item.product_id) || {};
-        const b = boxes.find(x => x.id === item.box_id) || {};
-
         if (pId && item.product_id !== pId) return false;
         if (vCode && v.variant_code !== vCode) return false;
         if (sizeVal && v.size !== sizeVal) return false;
         if (bId && item.box_id !== bId) return false;
         if (status && item.status !== status) return false;
-        if (query) {
-          const str = `${item.piece_code} ${item.barcode} ${v.variant_code} ${p.name} ${p.sku} ${p.category} ${v.size} ${v.color} ${b.box_number}`.toLowerCase();
-          if (!str.includes(query)) return false;
-        }
         return true;
+      });
+
+      if (!rawQuery) return baseList;
+
+      // Exact piece_code or barcode check
+      if (normQ) {
+        const exactMatches = baseList.filter(item => {
+          const pc = item.piece_code || '';
+          const bc = item.barcode || '';
+          return normalizeSearchStr(pc) === normQ || pc.trim().toLowerCase() === lowerQ || normalizeSearchStr(bc) === normQ || bc.trim().toLowerCase() === lowerQ;
+        });
+        if (exactMatches.length > 0) return exactMatches;
+      }
+
+      return baseList.filter(item => {
+        const v = variants.find(x => x.id === item.variant_id) || {};
+        const p = products.find(x => x.id === item.product_id) || {};
+        const b = boxes.find(x => x.id === item.box_id) || {};
+        const str = `${item.piece_code || ''} ${item.barcode || ''} ${v.variant_code || ''} ${p.name || ''} ${p.sku || ''} ${p.category || ''} ${v.size || ''} ${v.color || ''} ${b.box_number || ''}`;
+        return smartSearchMatch(str, rawQuery);
       });
     }
 
@@ -6683,7 +7160,7 @@
         </div>
         <table>
           <tbody>
-            <tr><td><b style="color:#09090b; font-weight:800;">Size</b></td><td><b style="font-size:14px; font-weight:900; color:#09090b;">Size ${v.size}</b> <span style="font-weight:700; color:#1e293b;">(${v.color})</span></td></tr>
+            <tr><td><b style="color:#09090b; font-weight:800;">Size / Variant</b></td><td><b style="font-size:14px; font-weight:900; color:#09090b;">${(v.size && v.size !== 'Free Size' && v.size !== 'N/A' && v.size !== '-') ? 'Size ' + v.size : (v.size || '-')}</b> <span style="font-weight:700; color:#1e293b;">(${v.color})</span></td></tr>
             <tr><td><b style="color:#09090b; font-weight:800;">Physical Box</b></td><td><span class="box-tag" style="font-weight:800;">${b.box_number}</span></td></tr>
             <tr><td><b style="color:#09090b; font-weight:800;">Selling Price</b></td><td><b style="font-size:15px; font-weight:900; color:var(--primary);">${money(p.price)}</b> <span style="color:#475569; font-weight:600; text-decoration:line-through; font-size:12.5px;">(MRP: ${money(p.mrp)})</span></td></tr>
             <tr><td><b style="color:#09090b; font-weight:800;">Status</b></td><td><span class="status-badge in-stock" style="font-weight:800;">${item.status}</span></td></tr>
@@ -6750,16 +7227,22 @@
       applySettingsToUI();
 
       try {
-        await fetch('/api/pos/settings', {
+        const resp = await fetch('/api/pos/settings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(settings)
         });
+        if (resp.ok) {
+          const res = await resp.json();
+          if (res && res.data && res.data.settings) {
+            settings = { ...settings, ...res.data.settings };
+          }
+        }
       } catch (err) {
-        console.warn('Backend SQLite settings update error, saving locally:', err);
+        console.warn('Backend settings update error, saving locally:', err);
       }
 
-      saveToLocalCache();
+      await saveToLocalCache();
       showToast('Settings & Terms & Conditions saved successfully!', 'success');
     }
 
@@ -6853,20 +7336,41 @@
       const countEl = document.getElementById('catalogCountText');
       if (!container) return;
 
-      const query = typeof forcedQuery === 'string'
+      const rawQ = (typeof forcedQuery === 'string'
         ? forcedQuery.trim()
         : ((document.getElementById('catalogFilterInput') ? document.getElementById('catalogFilterInput').value : '') ||
-          (document.getElementById('scanId') ? document.getElementById('scanId').value : '')).trim();
+          (document.getElementById('scanId') ? document.getElementById('scanId').value : '')).trim());
+      const normQ = normalizeSearchStr(rawQ);
+      const lowerQ = rawQ.toLowerCase();
 
-      const list = products.filter(p => {
-        if (!query) return true;
-        const pVars = getProductVariants(p.id);
-        const pPieces = inventory_items.filter(pi => pi.product_id === p.id);
-        const varsStr = pVars.map(v => `${v.variant_code} ${v.size} Sz ${v.size} ${v.color} ${p.sku}-${v.color} ${p.sku}${v.color} ${p.sku}-${v.variant_code} ${p.sku}${v.variant_code} ${p.sku}-${v.size} ${p.sku}${v.size}`).join(' ');
-        const piecesStr = pPieces.map(pi => `${pi.piece_code} ${pi.barcode}`).join(' ');
-        const str = `${p.name} ${p.brand} ${p.category} ${p.sku} ${varsStr} ${piecesStr}`;
-        return smartSearchMatch(str, query);
-      });
+      let list = products;
+      if (rawQ) {
+        // Exact unique SKU or Name match isolation
+        if (normQ) {
+          const exactMatches = products.filter(p => {
+            const sku = p.sku || '';
+            const name = p.name || '';
+            return (
+              normalizeSearchStr(sku) === normQ ||
+              sku.trim().toLowerCase() === lowerQ ||
+              normalizeSearchStr(name) === normQ ||
+              name.trim().toLowerCase() === lowerQ
+            );
+          });
+          if (exactMatches.length > 0) {
+            list = exactMatches;
+          } else {
+            list = products.filter(p => {
+              const pVars = getProductVariants(p.id);
+              const pPieces = inventory_items.filter(pi => pi.product_id === p.id);
+              const varsStr = pVars.map(v => `${v.variant_code} ${v.size} Sz ${v.size} ${v.color} ${p.sku}-${v.color} ${p.sku}${v.color} ${p.sku}-${v.variant_code} ${p.sku}${v.variant_code} ${p.sku}-${v.size} ${p.sku}${v.size}`).join(' ');
+              const piecesStr = pPieces.map(pi => `${pi.piece_code} ${pi.barcode}`).join(' ');
+              const str = `${p.name} ${p.brand} ${p.category} ${p.sku} ${varsStr} ${piecesStr}`;
+              return smartSearchMatch(str, rawQ);
+            });
+          }
+        }
+      }
 
       if (countEl) countEl.textContent = `${list.length} models`;
 
@@ -6885,16 +7389,53 @@
               <div style="font-weight:900; font-size:14px; color:#09090b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.name}</div>
               <div style="font-size:12px; color:#334155; font-weight:700; margin-top:2px;">${p.brand} • <b style="color:var(--primary); font-size:13.5px; font-weight:900;">${money(p.price)}</b> • <b style="color:${stock > 0 ? '#15803d' : '#b91c1c'};">${stock} in stock</b></div>
               <div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:4px;">
-                ${pVars.map(v => `
-                  <button class="btn sm" style="padding:2px 7px; font-size:11.5px; font-weight:800; background:#ffffff; border-color:#cbd5e1; color:#09090b;" onclick="addVariantDirectToBill('${v.id}')">
-                    Sz ${v.size}
-                  </button>
-                `).join('')}
+                ${isNonFootwearCategory(p.category)
+                  ? `<button class="btn sm primary" style="padding:2px 8px; font-size:11.5px; font-weight:800;" onclick="addNonFootwearDirectToBill('${p.id}')">+ Add to Bill</button>`
+                  : pVars.map(v => `
+                    <button class="btn sm" style="padding:2px 7px; font-size:11.5px; font-weight:800; background:#ffffff; border-color:#cbd5e1; color:#09090b;" onclick="addVariantDirectToBill('${v.id}')">
+                      Sz ${v.size}
+                    </button>
+                  `).join('')}
               </div>
             </div>
           </div>
         `;
       }).join('');
+    }
+
+    function addNonFootwearDirectToBill(productId) {
+      const p = products.find(x => x.id === productId);
+      if (!p) return;
+
+      const isExch = (billingScanMode === 'exchange');
+      const pVars = getProductVariants(p.id);
+      const variant = pVars[0] || { id: 'VAR-' + p.id, size: '-', color: '-' };
+
+      let availablePiece = inventory_items.find(pi => pi.product_id === p.id && (isExch ? true : pi.status === 'In Stock') && !currentBill.some(bi => bi.piece_id === pi.id));
+      if (!availablePiece && !isExch) {
+        showToast(`"${p.name}" is OUT OF STOCK.`, 'error');
+        return;
+      }
+
+      addBillItem({
+        piece_id: availablePiece ? availablePiece.id : null,
+        piece_code: availablePiece ? availablePiece.piece_code : (p.sku || 'DIRECT'),
+        product_id: p.id,
+        variant_id: variant.id || null,
+        name: p.name,
+        sku: p.sku,
+        brand: p.brand,
+        size: '-',
+        color: '',
+        box_number: '-',
+        mrp: Number(p.mrp || p.price || 0),
+        selling_price: Number(p.price || 0),
+        quantity: 1,
+        discount: 0,
+        is_return: isExch
+      });
+
+      focusScanner();
     }
 
     function addVariantDirectToBill(variantId) {
@@ -6943,10 +7484,29 @@
     function renderModalSearchResults() {
       const container = document.getElementById('modalSearchResultsTable');
       if (!container) return;
-      const query = (document.getElementById('modalSearchInput').value || '').toLowerCase().trim();
+      const rawQuery = (document.getElementById('modalSearchInput').value || '').trim();
+      const normQ = normalizeSearchStr(rawQuery);
+      const lowerQ = rawQuery.toLowerCase();
+
+      let targetProducts = products;
+      if (rawQuery && normQ) {
+        const exactMatches = products.filter(p => {
+          const sku = p.sku || '';
+          const name = p.name || '';
+          return (
+            normalizeSearchStr(sku) === normQ ||
+            sku.trim().toLowerCase() === lowerQ ||
+            normalizeSearchStr(name) === normQ ||
+            name.trim().toLowerCase() === lowerQ
+          );
+        });
+        if (exactMatches.length > 0) {
+          targetProducts = exactMatches;
+        }
+      }
 
       const results = [];
-      products.forEach(p => {
+      targetProducts.forEach(p => {
         const pVars = getProductVariants(p.id);
         const pPieces = inventory_items.filter(pi => pi.product_id === p.id);
         pVars.forEach(v => {
@@ -6954,7 +7514,7 @@
           const vPieces = pPieces.filter(pi => pi.variant_id === v.id);
           const pieceCodes = vPieces.map(pi => `${pi.piece_code} ${pi.barcode}`).join(' ');
           const searchStr = `${p.name} ${p.brand} ${p.category} ${p.sku} ${v.variant_code} ${v.size} ${v.color} ${p.sku}-${v.color} ${p.sku}${v.color} ${pieceCodes}`;
-          if (!query || smartSearchMatch(searchStr, query)) {
+          if (!rawQuery || targetProducts !== products || smartSearchMatch(searchStr, rawQuery)) {
             results.push({ p, v, vStock });
           }
         });
@@ -6965,21 +7525,24 @@
         return;
       }
 
-      container.innerHTML = results.slice(0, 15).map(({ p, v, vStock }) => `
+      container.innerHTML = results.slice(0, 15).map(({ p, v, vStock }) => {
+        const isNonFoot = isNonFootwearCategory(p.category);
+        const sizeCell = isNonFoot ? '<b>N/A</b>' : `Size <b>${v.size}</b> (${v.color})`;
+        return `
         <tr>
           <td><b style="font-size:13.5px;">${p.name}</b><div style="font-size:11px; color:var(--text-muted);">${p.brand}</div></td>
           <td><code>${p.sku}</code></td>
-          <td>Size <b>${v.size}</b> (${v.color})</td>
+          <td>${sizeCell}</td>
           <td><span class="variant-code-badge">${v.variant_code || '-'}</span></td>
-          <td class="num-cell"><span class="status-badge ${vStock > 0 ? 'in-stock' : 'out-of-stock'}">${vStock} pairs</span></td>
+          <td class="num-cell"><span class="status-badge ${vStock > 0 ? 'in-stock' : 'out-of-stock'}">${vStock} ${isNonFoot ? 'in stock' : 'pairs'}</span></td>
           <td class="num-cell"><b style="font-size:14px; color:var(--primary);">${money(p.price)}</b></td>
           <td style="text-align:center;">
-            <button class="btn sm primary" ${vStock === 0 && billingScanMode !== 'exchange' ? 'disabled' : ''} onclick="addVariantDirectToBill('${v.id}'); closeModal('searchProductModal');">
+            <button class="btn sm primary" ${vStock === 0 && billingScanMode !== 'exchange' ? 'disabled' : ''} onclick="${isNonFoot ? `addNonFootwearDirectToBill('${p.id}')` : `addVariantDirectToBill('${v.id}')`}; closeModal('searchProductModal');">
               + Add
             </button>
           </td>
         </tr>
-      `).join('');
+      `}).join('');
     }
 
     // ============================================================
