@@ -52,3 +52,4 @@ if (rceditExe && fs.existsSync(rceditExe)) {
 } else {
   console.log('rcedit not present in cache yet, electron-builder will apply icon automatically.');
 }
+

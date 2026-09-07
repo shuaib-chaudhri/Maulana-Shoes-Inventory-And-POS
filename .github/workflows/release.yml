@@ -29,10 +29,10 @@ jobs:
       - name: Build Web Frontend
         run: npm run build
 
-      - name: Repack ASAR
+      - name: Repack ASAR with Complete Updater Dependencies
         run: node scripts/repack_asar.cjs
 
-      - name: Build & Publish Release
+      - name: Build & Publish Release Assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run dist:publish
