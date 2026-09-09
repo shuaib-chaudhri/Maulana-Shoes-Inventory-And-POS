@@ -86,6 +86,8 @@ function collectProductionDependencies() {
     console.warn('npm ls parseable notice:', err.message);
   }
 
+  const devTools = new Set(['electron', 'electron-builder', 'typescript', 'vite', 'app-builder-lib', 'builder-util']);
+
   // Tier B: Recursive dependency crawler for all packages in package.json
   function crawlDeps(pkgDir, currentRel) {
     const pJson = path.join(pkgDir, 'package.json');
@@ -94,7 +96,7 @@ function collectProductionDependencies() {
       const data = JSON.parse(fs.readFileSync(pJson, 'utf8'));
       const deps = Object.keys(data.dependencies || {});
       for (const dep of deps) {
-        if (dep === 'better-sqlite3') continue;
+        if (dep === 'better-sqlite3' || devTools.has(dep)) continue;
         // Check nested node_modules first, then root
         const nestedDir = path.join(pkgDir, 'node_modules', dep);
         const rootDepDir = path.join(rootDir, 'node_modules', dep);
@@ -116,7 +118,7 @@ function collectProductionDependencies() {
 
   const rootPkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
   for (const dep of Object.keys(rootPkg.dependencies || {})) {
-    if (dep === 'better-sqlite3') continue;
+    if (dep === 'better-sqlite3' || devTools.has(dep)) continue;
     relativePaths.add(dep);
     crawlDeps(path.join(rootDir, 'node_modules', dep), dep);
   }
@@ -181,8 +183,28 @@ updaterCacheDirName: maulana-shoes-inventory-pos-updater
 
 fs.writeFileSync(path.join(stagingDir, 'app-update.yml'), appUpdateYaml, 'utf8');
 fs.writeFileSync(path.join(resDir, 'app-update.yml'), appUpdateYaml, 'utf8');
-fs.copyFileSync(path.join(rootDir, 'maulana_pos_data.json'), path.join(resDir, 'maulana_pos_data.json'));
-fs.copyFileSync(path.join(rootDir, 'logo.png'), path.join(resDir, 'logo.png'));
+
+const posDataSrc = path.join(rootDir, 'maulana_pos_data.json');
+if (fs.existsSync(posDataSrc)) {
+  fs.copyFileSync(posDataSrc, path.join(resDir, 'maulana_pos_data.json'));
+} else {
+  const defaultSeed = {
+    settings: {
+      storeName: "Maulana Shoes",
+      storeAddress: "Begumpeth, Solapur, Maharashtra, India",
+      phone: "+91 9890324362",
+      whatsapp: "+91 7588888578",
+      receiptFooter: "Always at your service in Solapur!"
+    },
+    products: []
+  };
+  fs.writeFileSync(path.join(resDir, 'maulana_pos_data.json'), JSON.stringify(defaultSeed, null, 2), 'utf8');
+}
+
+const logoSrc = path.join(rootDir, 'logo.png');
+if (fs.existsSync(logoSrc)) {
+  fs.copyFileSync(logoSrc, path.join(resDir, 'logo.png'));
+}
 
 // 3. Staging Pre-Pack Verification
 console.log('Running pre-pack dependency verification in staging...');

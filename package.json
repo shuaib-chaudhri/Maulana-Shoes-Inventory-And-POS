@@ -1,7 +1,7 @@
 {
   "name": "maulana-shoes-inventory-pos",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "main.cjs",
   "type": "module",
   "repository": {
@@ -29,8 +29,8 @@
   "devDependencies": {
     "electron": "^31.7.7",
     "electron-builder": "^24.13.3",
-    "typescript": "^5.0.0",
-    "vite": "^5.0.0"
+    "typescript": "^5.0.2",
+    "vite": "^5.4.21"
   },
   "build": {
     "appId": "com.maulana.shoes.pos",
@@ -39,7 +39,8 @@
       {
         "provider": "github",
         "owner": "shuaib-chaudhri",
-        "repo": "Maulana-Shoes-Inventory-And-POS"
+        "repo": "Maulana-Shoes-Inventory-And-POS",
+        "releaseType": "release"
       }
     ],
     "directories": {
