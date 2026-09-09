@@ -14,7 +14,6 @@
     "preview": "vite preview",
     "start": "node server.cjs",
     "electron:dev": "electron .",
-    "postinstall": "electron-builder install-app-deps",
     "dist": "node scripts/apply-icon.cjs && electron-builder --win nsis --prepackaged release/win-unpacked",
     "dist:installer": "node scripts/apply-icon.cjs && electron-builder --win nsis --prepackaged release/win-unpacked",
     "dist:publish": "node scripts/apply-icon.cjs && electron-builder --win nsis --prepackaged release/win-unpacked --publish always",
@@ -23,8 +22,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
-    "better-sqlite3": "^13.0.3",
     "electron-updater": "^6.8.9"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^13.0.3"
   },
   "devDependencies": {
     "electron": "^31.7.7",
