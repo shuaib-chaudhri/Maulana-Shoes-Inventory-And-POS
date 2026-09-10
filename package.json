@@ -1,7 +1,7 @@
 {
   "name": "maulana-shoes-inventory-pos",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "main": "main.cjs",
   "type": "module",
   "repository": {
