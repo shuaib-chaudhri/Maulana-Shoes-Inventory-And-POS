@@ -1072,25 +1072,21 @@
     }
 
     .payment-box {
-      background: #f8fafc;
-      border: 1.5px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: 10px 12px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
     }
 
     .payment-btn-group {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 5px;
+      gap: 4px;
     }
 
     .payment-btn {
-      padding: 8px 4px;
-      font-size: 13px;
+      padding: 7px 4px;
+      font-size: 12.5px;
       font-weight: 800;
       border: 1.5px solid var(--border-color);
       background: #ffffff;
@@ -1961,10 +1957,10 @@
               <input id="scanId" class="scanner-input" placeholder="Scan barcode or enter SKU..." autofocus
                 onkeydown="handleScannerKeyDown(event)" oninput="handleBillingScannerInput()">
               <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
-                <button class="btn primary" id="btnAddScannedBtn" onclick="addScannedCodeToBill()" style="justify-content:center; padding:8px 12px; font-weight:800;">
+                <button type="button" class="btn primary" id="btnAddScannedBtn" onclick="addScannedCodeToBill()" style="justify-content:center; padding:8px 12px; font-weight:800;">
                   <span class="material-symbols-outlined">add_shopping_cart</span> Add Item
                 </button>
-                <button class="btn" onclick="openProductSearchModal()" style="justify-content:center; padding:8px 12px; font-weight:800;">
+                <button type="button" class="btn" onclick="openProductSearchModal()" style="justify-content:center; padding:8px 12px; font-weight:800;">
                   <span class="material-symbols-outlined">search</span> Search (F4)
                 </button>
               </div>
@@ -5591,6 +5587,8 @@
       if (btn) btn.classList.add('active');
     }
 
+    function calculateCashChange() {}
+
     // ============================================================
     // COMPLETE SALE WORKFLOW (SUPPORTS EXCHANGES & RESTOCKING)
     // ============================================================
@@ -5837,7 +5835,7 @@
               <span>${sale.grand_total < 0 ? 'NET REFUND:' : 'NET PAYABLE:'}</span>
               <span>${sale.grand_total < 0 ? '-' : ''}${money(Math.abs(sale.grand_total))}</span>
             </div>
-            ${sale.payment_method === 'Cash' && sale.grand_total >= 0 && (sale.change_amount > 0 || (sale.amount_received && sale.amount_received > sale.grand_total)) ? `
+            ${sale.payment_method === 'Cash' && sale.grand_total >= 0 ? `
               <div class="receipt-totals-row">
                 <span>Cash Received:</span>
                 <span>${money(sale.amount_received)}</span>
