@@ -24,7 +24,7 @@ jobs:
           node-version: 20
 
       - name: Install Dependencies
-        run: npm install --ignore-scripts --no-audit
+        run: npm ci --omit=optional --ignore-scripts
 
       - name: Build Web Frontend
         run: npm run build
