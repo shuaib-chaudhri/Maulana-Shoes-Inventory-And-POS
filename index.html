@@ -1326,16 +1326,18 @@
 
     /* Thermal Receipt Container (Screen display & print) */
     .receipt-container {
-      font-family: 'Courier New', Courier, monospace;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-variant-numeric: tabular-nums;
       background: #ffffff;
       color: #000000;
-      padding: 12px;
+      padding: 12px 10px;
       border: 1px dashed #cbd5e1;
       border-radius: 4px;
       margin: 0 auto;
-      line-height: 1.25;
+      line-height: 1.35;
       position: relative;
       overflow: hidden;
+      box-sizing: border-box;
     }
 
     .receipt-watermark {
@@ -1343,33 +1345,35 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: 22pt;
+      font-size: 20pt;
       font-weight: 900;
-      color: rgba(0, 0, 0, 0.075);
+      color: rgba(0, 0, 0, 0.06);
       letter-spacing: 2px;
       pointer-events: none;
       white-space: nowrap;
       text-transform: uppercase;
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: 'Segoe UI', Arial, sans-serif;
       z-index: 1;
       user-select: none;
     }
 
     .receipt-container.w-58mm .receipt-watermark {
-      font-size: 16pt;
+      font-size: 14pt;
       letter-spacing: 1px;
     }
 
     .receipt-container.w-58mm {
       width: 58mm;
       max-width: 58mm;
-      font-size: 9.5pt;
+      font-size: 8.5pt;
+      padding: 8px 6px;
     }
 
     .receipt-container.w-80mm {
       width: 80mm;
       max-width: 80mm;
-      font-size: 10.5pt;
+      font-size: 9.5pt;
+      padding: 12px 10px;
     }
 
     .receipt-header {
@@ -1380,14 +1384,18 @@
     }
 
     .receipt-title {
-      font-size: 12pt;
-      font-weight: 900;
+      font-size: 13pt;
+      font-weight: 800;
       text-transform: uppercase;
       margin-bottom: 2px;
+      letter-spacing: 0.5px;
+      line-height: 1.2;
     }
 
     .receipt-sub {
       font-size: 8pt;
+      color: #111;
+      line-height: 1.3;
     }
 
     .receipt-meta {
@@ -1395,10 +1403,12 @@
       margin-bottom: 6px;
       border-bottom: 1px dashed #000;
       padding-bottom: 5px;
+      line-height: 1.35;
     }
 
     .receipt-table {
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
       font-size: 8.5pt;
       margin-bottom: 6px;
@@ -1408,14 +1418,53 @@
       border-bottom: 1px dashed #000;
       background: transparent;
       color: #000;
-      padding: 2px 0;
+      padding: 3px 2px;
       font-size: 8pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
 
     .receipt-table td {
       border-bottom: none;
-      padding: 2px 0;
+      padding: 3px 2px;
       vertical-align: top;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .receipt-table .col-item {
+      width: 44%;
+      text-align: left;
+    }
+
+    .receipt-table .col-qty {
+      width: 14%;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .receipt-table .col-price {
+      width: 20%;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .receipt-table .col-amount {
+      width: 22%;
+      text-align: right;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .receipt-container.w-58mm .receipt-table th {
+      font-size: 7.5pt;
+      padding: 2px 1px;
+    }
+
+    .receipt-container.w-58mm .receipt-table td {
+      font-size: 7.5pt;
+      padding: 2px 1px;
     }
 
     .receipt-totals {
@@ -1428,16 +1477,18 @@
     .receipt-totals-row {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       margin-bottom: 2px;
+      line-height: 1.3;
     }
 
     .receipt-grand {
       font-size: 11pt;
-      font-weight: 900;
+      font-weight: 800;
       border-top: 1px dashed #000;
       border-bottom: 1px dashed #000;
-      padding: 3px 0;
-      margin: 3px 0;
+      padding: 4px 0;
+      margin: 4px 0;
     }
 
     .receipt-warranty,
@@ -1446,7 +1497,7 @@
       padding-top: 5px;
       margin-top: 6px;
       font-size: 7.5pt;
-      line-height: 1.25;
+      line-height: 1.3;
     }
 
     .receipt-footer {
@@ -1455,6 +1506,7 @@
       font-size: 8pt;
       border-top: 1px dashed #000;
       padding-top: 5px;
+      line-height: 1.3;
     }
 
     /* STRICT PRINT MEDIA ISOLATION (ZERO EXTRA DATA OR UNWANTED MODALS) */
@@ -5749,22 +5801,22 @@
           salesSubtotal += (it.price_at_sale * it.quantity) - (it.discount || 0);
         }
 
-        const sizeText = (it.size_snapshot && it.size_snapshot !== '-' && it.size_snapshot !== 'N/A') ? `Sz ${it.size_snapshot}` : '';
+        const sizeText = (it.size_snapshot && it.size_snapshot !== '-' && it.size_snapshot !== 'N/A') ? `Sz: ${it.size_snapshot}` : '';
         const colText = (it.colour_snapshot && it.colour_snapshot !== '-' && it.colour_snapshot !== 'Standard') ? `/${it.colour_snapshot}` : '';
         const tagText = it.piece_code ? `• ${it.piece_code}` : '';
         const detailSub = [sizeText + colText, tagText].filter(Boolean).join(' ').trim();
 
         return `
           <tr>
-            <td>
-              <div style="font-weight:700;">
-                ${isReturn ? '<span style="border:1px solid #000; padding:0 2px; font-size:6.5pt; font-weight:900;">[EXCHANGE RETURN]</span> ' : ''}${it.product_name_snapshot}
+            <td class="col-item">
+              <div style="font-weight:700; word-break:break-word;">
+                ${isReturn ? '<span style="border:1px solid #000; padding:0 2px; font-size:6.5pt; font-weight:800;">[EXCHANGE RETURN]</span> ' : ''}${it.product_name_snapshot}
               </div>
-              ${detailSub ? `<div style="font-size:7.5pt;">${detailSub}</div>` : ''}
+              ${detailSub ? `<div style="font-size:7.5pt; color:#333;">${detailSub}</div>` : ''}
             </td>
-            <td style="text-align:center;">${it.quantity}</td>
-            <td style="text-align:right;">${money(it.price_at_sale)}</td>
-            <td style="text-align:right;"><b>${isReturn ? '-' : ''}${money(Math.abs(it.amount))}</b></td>
+            <td class="col-qty">${it.quantity}</td>
+            <td class="col-price">${money(it.price_at_sale)}</td>
+            <td class="col-amount"><b>${isReturn ? '-' : ''}${money(Math.abs(it.amount))}</b></td>
           </tr>
         `;
       }).join('');
@@ -5781,28 +5833,28 @@
             </div>
             <div class="receipt-title">${settings.storeName || 'MAULANA SHOES'}</div>
             <div class="receipt-sub">${settings.storeAddress || 'Begumpeth, Solapur, Maharashtra'}</div>
-            ${settings.phone ? `<div class="receipt-sub">Ph: ${settings.phone}</div>` : ''}
+            ${settings.phone ? `<div class="receipt-sub">Ph: <b>${settings.phone}</b></div>` : ''}
             ${settings.gstNumber ? `<div class="receipt-sub">GSTIN: <b>${settings.gstNumber}</b></div>` : ''}
           </div>
 
           <div class="receipt-meta">
             <div style="display:flex; justify-content:space-between;">
               <span>Bill No: <b>${sale.bill_number}</b></span>
-              <span>Date: ${dateFormatted}</span>
+              <span>Date: <b>${dateFormatted}</b></span>
             </div>
             <div style="display:flex; justify-content:space-between; margin-top:2px;">
-              <span>Time: ${timeFormatted}</span>
-              <span>Payment: ${sale.payment_method}</span>
+              <span>Time: <b>${timeFormatted}</b></span>
+              <span>Payment: <b>${sale.payment_method}</b></span>
             </div>
           </div>
 
           <table class="receipt-table">
             <thead>
               <tr>
-                <th>Item</th>
-                <th style="text-align:center; width:26px;">Qty</th>
-                <th style="text-align:right; width:45px;">Price</th>
-                <th style="text-align:right; width:50px;">Amount</th>
+                <th class="col-item">Item</th>
+                <th class="col-qty">Qty</th>
+                <th class="col-price">Price</th>
+                <th class="col-amount">Amount</th>
               </tr>
             </thead>
             <tbody>${itemRows}</tbody>
@@ -5811,10 +5863,10 @@
           <div class="receipt-totals">
             <div class="receipt-totals-row">
               <span>Items Total:</span>
-              <span>${money(salesSubtotal)}</span>
+              <span style="font-weight:600;">${money(salesSubtotal)}</span>
             </div>
             ${returnCredit > 0 ? `
-              <div class="receipt-totals-row" style="font-weight:800;">
+              <div class="receipt-totals-row" style="font-weight:700;">
                 <span>Exchange Return:</span>
                 <span>-${money(returnCredit)}</span>
               </div>
@@ -5822,13 +5874,13 @@
             ${sale.overall_discount > 0 ? `
               <div class="receipt-totals-row">
                 <span>Discount:</span>
-                <span>-₹${sale.overall_discount}</span>
+                <span style="font-weight:600;">-₹${sale.overall_discount}</span>
               </div>
             ` : ''}
             ${sale.tax_amount > 0 ? `
               <div class="receipt-totals-row">
                 <span>GST / Tax:</span>
-                <span>₹${sale.tax_amount}</span>
+                <span style="font-weight:600;">₹${sale.tax_amount}</span>
               </div>
             ` : ''}
             <div class="receipt-totals-row receipt-grand">
@@ -5838,26 +5890,22 @@
             ${sale.payment_method === 'Cash' && sale.grand_total >= 0 ? `
               <div class="receipt-totals-row">
                 <span>Cash Received:</span>
-                <span>${money(sale.amount_received)}</span>
-              </div>
-              <div class="receipt-totals-row">
-                <span>Change Returned:</span>
-                <span>${money(sale.change_amount)}</span>
+                <span style="font-weight:600;">${money(sale.amount_received)}</span>
               </div>
             ` : ''}
           </div>
 
           <!-- STORE TERMS & CONDITIONS -->
           <div class="receipt-terms" style="border-top:1px dashed #000; padding-top:4px; margin-top:6px; font-size:7.5pt; text-align:left;">
-            <div style="font-weight:900; text-transform:uppercase; text-align:center; margin-bottom:3px; letter-spacing:0.5px;">*** TERMS AND CONDITIONS ***</div>
+            <div style="font-weight:800; text-transform:uppercase; text-align:center; margin-bottom:3px; letter-spacing:0.5px;">*** TERMS AND CONDITIONS ***</div>
             <div style="line-height:1.35; font-size:7pt; padding:0 2px;">
               ${termsLines.map(line => `<div>${line}</div>`).join('')}
             </div>
           </div>
 
           <div class="receipt-footer">
-            <div>${settings.receiptFooter || 'Thank you for shopping with us! Visit again.'}</div>
-            <div style="margin-top:4px; font-size:7pt;">*** MAULANA SHOES POS ***</div>
+            <div style="font-weight:600;">${settings.receiptFooter || 'Thank you for shopping with us! Visit again.'}</div>
+            <div style="margin-top:4px; font-size:7pt; font-weight:700;">*** MAULANA SHOES POS ***</div>
             <div style="margin-top:5px; font-size:6.8pt; color:#444; border-top:1px dotted #888; padding-top:3px; letter-spacing:0.5px;">
               Software by <b>Wasl Technology</b>
             </div>
