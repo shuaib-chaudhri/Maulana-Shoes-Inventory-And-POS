@@ -29,6 +29,7 @@
     "better-sqlite3": "^13.0.3"
   },
   "devDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.64.5",
     "electron": "^31.7.7",
     "electron-builder": "^24.13.3",
     "typescript": "^5.0.2",
