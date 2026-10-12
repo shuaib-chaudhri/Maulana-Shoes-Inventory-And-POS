@@ -14,5 +14,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_, data) => callback(data);
     ipcRenderer.on('updater:status', handler);
     return () => ipcRenderer.removeListener('updater:status', handler);
-  }
+  },
+  getPrinters: () => ipcRenderer.invoke('printer:getPrinters'),
+  printThermal: (payload) => ipcRenderer.invoke('printer:printThermal', payload),
+  printReceipt: (payload) => ipcRenderer.invoke('printer:printReceipt', payload),
+  exportThermalPdf: (payload) => ipcRenderer.invoke('printer:exportPdf', payload)
 });

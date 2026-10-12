@@ -281,7 +281,10 @@ function seedInitialData(db) {
       taxPercent: 5,
       defaultLowStock: 5,
       receiptWidth: '80mm',
-      gstNumber: ''
+      gstNumber: '',
+      thermalPrinterName: 'TSC TL240',
+      receiptPrinterName: 'RETSOL RTP-82UE',
+      barcodePrintMode: 'thermal'
     };
     db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('store_settings', JSON.stringify(defaultSettings));
   }

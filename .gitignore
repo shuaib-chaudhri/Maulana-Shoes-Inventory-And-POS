@@ -48,3 +48,5 @@ lerna-debug.log*
 # OS and editor files
 .DS_Store
 Thumbs.db
+test/artifacts/
+*.pdf

@@ -1635,7 +1635,53 @@
         border: 1px dotted #94a3b8 !important;
       }
 
-      /* 3. BOX BARCODE TAG PRINTING */
+      /* 3. THERMAL 2x1 INCH BARCODE LABELS PRINTING (TSC TL240) */
+      body.printing-thermal-labels .modal-backdrop#printPreviewModal {
+        position: static !important;
+        background: transparent !important;
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        visibility: visible !important;
+      }
+
+      body.printing-thermal-labels #printPreviewModal .modal-content,
+      body.printing-thermal-labels #printPreviewModal .modal-body,
+      body.printing-thermal-labels #printPreviewPages,
+      body.printing-thermal-labels #printPreviewPages * {
+        visibility: visible !important;
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+
+      body.printing-thermal-labels .thermal-label-page {
+        width: 50.8mm !important;
+        height: 25.4mm !important;
+        max-width: 50.8mm !important;
+        max-height: 25.4mm !important;
+        box-sizing: border-box !important;
+        padding: 1.0mm 1.5mm 0.8mm 1.5mm !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+
+      body.printing-thermal-labels .thermal-label-page:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
+
+      /* 4. BOX BARCODE TAG PRINTING */
       body.printing-box-tag #boxDisplayArea,
       body.printing-box-tag #boxDisplayArea * {
         visibility: visible !important;
@@ -2141,11 +2187,13 @@
               Barcode Printing</h2>
             <p class="page-subtitle">Print labels for shoes and stock boxes</p>
           </div>
-          <div style="display:flex; align-items:center; gap:12px;">
-            <span id="lblSelectedCountText" style="font-weight:800; color:var(--primary); font-size:13.5px;">0 labels
-              selected</span>
-            <button id="btnPrintSelectedLabels" class="btn primary" onclick="openPrintPreviewSelected()">
-              <span class="material-symbols-outlined">print</span> Print Selected Labels
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span id="lblSelectedCountText" style="font-weight:800; color:var(--primary); font-size:13.5px; margin-right:6px;">0 labels selected</span>
+            <button id="btnPrintSelectedLabels" class="btn primary" onclick="handlePrintBarcodesClick()">
+              <span class="material-symbols-outlined">print</span> Print Barcodes
+            </button>
+            <button class="btn" onclick="openPrintPreviewSelected()" title="Preview labels before printing">
+              <span class="material-symbols-outlined">preview</span> Preview
             </button>
           </div>
         </div>
@@ -2531,6 +2579,10 @@
             </div>
             <div class="form-row" style="margin-top:10px;">
               <div>
+                <label>Receipt Printer Device Name (Windows Driver) *</label>
+                <input id="setReceiptPrinterName" value="RETSOL RTP-82UE" placeholder="e.g. RETSOL RTP-82UE">
+              </div>
+              <div>
                 <label>Thermal Receipt Paper Width</label>
                 <select id="setReceiptWidth">
                   <option value="80mm" selected>80mm (Standard Counter POS)</option>
@@ -2554,6 +2606,44 @@
                 <input id="setTaxPercent" type="number" min="0" value="5">
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- TSC TL240 Thermal Barcode Printer Configuration -->
+        <div class="panel">
+          <h3 class="panel-title"><span class="material-symbols-outlined" style="color:var(--primary)">qr_code_2</span>
+            Barcode Thermal Printer (TSC TL240)</h3>
+          <p style="font-size:12.5px; font-weight:600; color:#475569; margin-bottom:12px;">
+            Configure dedicated silent thermal printing for 2 × 1-inch labels (50.8 × 25.4 mm). Jobs will be submitted silently to the configured TSC TL240 printer without showing a print dialog.
+          </p>
+          <div class="form-row">
+            <div>
+              <label>Default Barcode Print Layout *</label>
+              <select id="setBarcodePrintMode">
+                <option value="thermal" selected>Thermal Label (2" × 1" / 50.8 × 25.4 mm) - TSC TL240</option>
+                <option value="a4">A4 Sheet (36 Labels per page)</option>
+              </select>
+            </div>
+            <div>
+              <label>Thermal Printer Device Name (Windows Driver) *</label>
+              <input id="setThermalPrinterName" value="TSC TL240" placeholder="e.g. TSC TL240">
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap;">
+            <button type="button" class="btn sm" onclick="detectInstalledPrinters()"><span class="material-symbols-outlined" style="font-size:15px;">search</span> Detect Installed Printers</button>
+            <button type="button" class="btn sm" onclick="testThermalPrinterConnection()"><span class="material-symbols-outlined" style="font-size:15px;">verified</span> Test Printer Connection</button>
+            <select id="setDetectedPrintersDropdown" style="display:none; max-width:280px; font-size:12px;" onchange="applySelectedDetectedPrinter(this.value)">
+              <option value="">Select from detected printers...</option>
+            </select>
+            <span id="printerConnectionStatusText" style="font-size:12px; font-weight:700;"></span>
+          </div>
+          <div style="background:#f1f5f9; border-left:3px solid var(--primary); padding:10px 12px; border-radius:4px; margin-top:12px; font-size:12px; color:#334155; line-height:1.45;">
+            <b>Client Windows Printer Setup Checklist:</b>
+            <br>1. In Windows <b>Settings &gt; Printers & Scanners &gt; TSC TL240 &gt; Printing Preferences</b>:
+            <br>&nbsp;&nbsp;&nbsp;• Set Paper Size / Stock to <b>2.00 in × 1.00 in (50.8 × 25.4 mm)</b>.
+            <br>&nbsp;&nbsp;&nbsp;• Set Media Type to <b>Die-Cut Label with Gaps (Transmissive Sensor)</b> with 2-3 mm gap.
+            <br>&nbsp;&nbsp;&nbsp;• Set Print Speed to <b>3.0 or 4.0 ips</b>, Darkness/Density to <b>8-10</b>.
+            <br>2. When Print Barcodes is clicked in thermal mode, jobs are sent silently to this device without dialogs.
           </div>
         </div>
 
@@ -2818,8 +2908,8 @@
       </div>
       <div class="modal-footer no-print">
         <button class="btn" onclick="closeReceiptModal()">Close</button>
-        <button class="btn primary" onclick="triggerReceiptPrint()"><span class="material-symbols-outlined">print</span>
-          Print Receipt</button>
+        <button class="btn primary" onclick="reprintLastBill()"><span class="material-symbols-outlined">print</span>
+          Reprint Receipt</button>
       </div>
     </div>
   </div>
@@ -2904,24 +2994,37 @@
     </div>
   </div>
 
-  <!-- 7. A4 BARCODE PRINT PREVIEW MODAL -->
+  <!-- 7. BARCODE PRINT PREVIEW MODAL (THERMAL 2x1" & A4) -->
   <div id="printPreviewModal" class="modal-backdrop">
-    <div class="modal-content" style="max-width: 920px; max-height: 94vh;">
-      <div class="modal-header no-print">
-        <h3 id="printPreviewTitle"><span class="material-symbols-outlined" style="color:var(--primary)">print</span>
-          Barcode Label Print Preview</h3>
-        <button class="btn icon-only" onclick="closeModal('printPreviewModal')"><span
-            class="material-symbols-outlined">close</span></button>
+    <div class="modal-content" style="max-width: 960px; max-height: 94vh;">
+      <div class="modal-header no-print" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h3 id="printPreviewTitle" style="margin:0;"><span class="material-symbols-outlined" style="color:var(--primary)">print</span>
+            Barcode Label Print Preview</h3>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:11.5px; font-weight:800; color:var(--text-muted);">LAYOUT:</span>
+          <div style="display:inline-flex; background:rgba(255,255,255,0.08); padding:2px; border-radius:6px; border:1px solid rgba(255,255,255,0.12);">
+            <button id="btnLayoutThermal" class="btn sm primary" type="button" onclick="setBarcodePrintLayout('thermal')" style="padding:4px 10px; font-size:11.5px; font-weight:800;">
+              <span class="material-symbols-outlined" style="font-size:15px;">receipt_long</span> Thermal (2" × 1" TSC TL240)
+            </button>
+            <button id="btnLayoutA4" class="btn sm" type="button" onclick="setBarcodePrintLayout('a4')" style="padding:4px 10px; font-size:11.5px; font-weight:800; background:transparent; color:var(--text-muted);">
+              <span class="material-symbols-outlined" style="font-size:15px;">grid_on</span> A4 Sheet (36/page)
+            </button>
+          </div>
+          <button class="btn icon-only" onclick="closeModal('printPreviewModal')"><span
+              class="material-symbols-outlined">close</span></button>
+        </div>
       </div>
-      <div class="modal-body" style="padding:14px; background:#334155;">
-        <div id="printPreviewPages" style="display:flex; flex-direction:column; align-items:center; gap:20px;"></div>
+      <div class="modal-body" style="padding:16px; background:#1e293b; overflow-y:auto; max-height:calc(94vh - 130px);">
+        <div id="printPreviewPages" style="display:flex; flex-direction:column; align-items:center; gap:18px; width:100%;"></div>
       </div>
       <div class="modal-footer no-print">
         <span id="printSummaryText"
           style="margin-right:auto; font-size:12.5px; font-weight:700; color:var(--text-muted);"></span>
         <button class="btn" onclick="closeModal('printPreviewModal')">Close</button>
-        <button class="btn primary" onclick="triggerLabelPrint()"><span class="material-symbols-outlined">print</span>
-          Print Labels</button>
+        <button id="btnPrintModalAction" class="btn primary" onclick="executeBarcodePrintAction()"><span class="material-symbols-outlined">print</span>
+          Print to TSC TL240</button>
       </div>
     </div>
   </div>
@@ -2974,8 +3077,19 @@
       taxPercent: 5,
       defaultLowStock: 5,
       receiptWidth: '80mm',
-      gstNumber: ''
+      gstNumber: '',
+      thermalPrinterName: 'TSC TL240',
+      receiptPrinterName: 'RETSOL RTP-82UE',
+      barcodePrintMode: 'thermal'
     };
+
+    // Label Print State
+    let currentLabelPrintMode = 'thermal'; // 'thermal' (2"x1" TSC TL240) or 'a4' (36 per sheet)
+    let currentPreviewItems = [];
+
+    // Last Completed Sale (Allows reprinting failed receipts without recreating sales or re-deducting stock)
+    let lastCompletedSale = null;
+    let lastCompletedItems = [];
 
     // POS Active Bill State
     let currentBill = [];
@@ -3901,7 +4015,7 @@
       }
       renderBarcodeLabelsPage();
       selectAllFilteredLabels();
-      openPrintPreviewSelected();
+      handlePrintBarcodesClick();
     }
 
     function renderProducts() {
@@ -5763,11 +5877,11 @@
 
       saveToLocalCache();
 
-      // Show Printable Receipt Modal
-      renderReceipt(saleRecord, saleItems);
-      document.getElementById('receiptModal').classList.add('active');
+      // Save reference to this completed sale for safe reprinting without recreating sales or deducting stock
+      lastCompletedSale = saleRecord;
+      lastCompletedItems = saleItems;
 
-      // Reset Bill State
+      // Reset Bill State immediately
       currentBill = [];
       setBillingScanMode(false);
       document.getElementById('overallDiscountInput').value = 0;
@@ -5775,8 +5889,10 @@
       updateDashboard();
       renderInventory();
       renderQuickCatalog();
-      showToast(`Sale completed! Bill #${billNumber} saved.`, 'success');
       focusScanner();
+
+      // Print directly to configured receipt printer (RETSOL RTP-82UE) without printer selection or preview modal
+      await printBillDirect(saleRecord, saleItems);
     }
 
     // ============================================================
@@ -5914,10 +6030,188 @@
       `;
     }
 
-    // STRICT PRINT ISOLATION TRIGGERS
+    // DIRECT RECEIPT PRINTING (RETSOL RTP-82UE) & STRICT PRINT ISOLATION TRIGGERS
+    async function printBillDirect(sale, items) {
+      if (!sale) return;
+      const printerName = settings.receiptPrinterName || 'RETSOL RTP-82UE';
+      renderReceipt(sale, items);
+
+      if (window.electronAPI && typeof window.electronAPI.printReceipt === 'function') {
+        const receiptArea = document.getElementById('printableReceiptArea');
+        const receiptHtml = buildReceiptDocumentHtml(receiptArea ? receiptArea.innerHTML : '');
+
+        try {
+          const res = await window.electronAPI.printReceipt({
+            html: receiptHtml,
+            printerName: printerName
+          });
+          if (res && res.success) {
+            showToast(`Bill #${sale.bill_number} sent directly to ${printerName}!`, 'success');
+          } else {
+            const err = res ? res.error : 'Receipt printing failed';
+            showToast(`Receipt Print Error: ${err}`, 'error');
+            // Show modal so cashier can retry/reprint without recreating sale
+            document.getElementById('receiptModal').classList.add('active');
+          }
+        } catch (e) {
+          showToast(`Receipt Print Error: ${e.message}`, 'error');
+          document.getElementById('receiptModal').classList.add('active');
+        }
+      } else {
+        document.body.className = 'printing-receipt';
+        window.print();
+        showToast(`Bill #${sale.bill_number} sent to printer.`, 'info');
+      }
+    }
+
+    async function reprintLastBill() {
+      if (!lastCompletedSale) {
+        showToast('No completed bill available to reprint.', 'warning');
+        return;
+      }
+      showToast('Reprinting bill...', 'info');
+      await printBillDirect(lastCompletedSale, lastCompletedItems);
+    }
+
+    function buildReceiptDocumentHtml(bodyHtml) {
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Receipt</title>
+  <style>
+    @page {
+      margin: 0mm;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #000000;
+      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .receipt-container {
+      width: 100%;
+      max-width: 78mm;
+      margin: 0 auto;
+      padding: 2mm 3mm;
+      color: #000000;
+      font-weight: 700;
+    }
+    .receipt-watermark {
+      display: none !important;
+    }
+    .receipt-title {
+      font-size: 13pt;
+      font-weight: 900;
+      text-transform: uppercase;
+      text-align: center;
+      color: #000000;
+      letter-spacing: 0.5px;
+    }
+    .receipt-sub {
+      font-size: 8pt;
+      font-weight: 700;
+      text-align: center;
+      color: #000000;
+      margin-top: 1px;
+    }
+    .receipt-meta {
+      border-top: 1.5px dashed #000000;
+      border-bottom: 1.5px dashed #000000;
+      padding: 4px 0;
+      margin: 5px 0;
+      font-size: 8pt;
+      font-weight: 800;
+      color: #000000;
+    }
+    .receipt-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8pt;
+      margin: 4px 0;
+      color: #000000;
+    }
+    .receipt-table th {
+      border-bottom: 1.5px solid #000000;
+      padding: 3px 0;
+      font-size: 8pt;
+      font-weight: 900;
+      text-align: left;
+      color: #000000;
+    }
+    .receipt-table td {
+      padding: 3px 0;
+      font-size: 8pt;
+      font-weight: 800;
+      color: #000000;
+      vertical-align: top;
+    }
+    .col-qty { text-align: center; width: 12%; }
+    .col-price { text-align: right; width: 22%; }
+    .col-amount { text-align: right; width: 24%; font-weight: 900; }
+    .receipt-totals {
+      border-top: 1.5px dashed #000000;
+      border-bottom: 1.5px solid #000000;
+      padding: 4px 0;
+      margin-top: 4px;
+      color: #000000;
+    }
+    .receipt-totals-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 8.5pt;
+      font-weight: 800;
+      margin: 1.5px 0;
+      color: #000000;
+    }
+    .receipt-grand {
+      font-size: 11pt;
+      font-weight: 900;
+      border-top: 1px solid #000000;
+      border-bottom: 1px solid #000000;
+      padding: 3px 0;
+      margin: 3px 0;
+      color: #000000;
+    }
+    .receipt-terms {
+      border-top: 1px dashed #000000;
+      padding-top: 4px;
+      margin-top: 6px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #000000;
+      line-height: 1.35;
+    }
+    .receipt-footer {
+      text-align: center;
+      margin-top: 6px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #000000;
+    }
+  </style>
+</head>
+<body>
+${bodyHtml}
+</body>
+</html>`;
+    }
+
     function triggerReceiptPrint() {
-      document.body.className = 'printing-receipt';
-      window.print();
+      if (lastCompletedSale) {
+        reprintLastBill();
+      } else {
+        document.body.className = 'printing-receipt';
+        window.print();
+      }
     }
 
     function triggerLabelPrint() {
@@ -7073,7 +7367,7 @@
       let selected;
       if (isFiltered) {
         selected = list.filter(pi => selectedPieceIds.has(pi.id));
-        // If user didn't check any specific checkbox, print all in this filtered view
+        // If user didn't check any specific checkbox, select all in this filtered view
         if (!selected.length && list.length > 0) {
           selected = list;
           list.forEach(it => selectedPieceIds.add(it.id));
@@ -7081,6 +7375,11 @@
         }
       } else {
         selected = inventory_items.filter(pi => selectedPieceIds.has(pi.id));
+        if (!selected.length && inventory_items.length > 0) {
+          selected = list;
+          list.forEach(it => selectedPieceIds.add(it.id));
+          renderBarcodeLabelsPage();
+        }
       }
 
       if (!selected || !selected.length) {
@@ -7088,57 +7387,525 @@
         return;
       }
 
+      currentPreviewItems = selected;
+      currentLabelPrintMode = settings.barcodePrintMode || 'thermal';
+      updateLayoutToggleButtons();
       renderPrintPreviewModal(selected);
       document.getElementById('printPreviewModal').classList.add('active');
+    }
+
+    async function handlePrintBarcodesClick() {
+      const list = getFilteredBarcodeItems();
+      const pId = (document.getElementById('lblFilterProduct') || {}).value || '';
+      const isFiltered = Boolean(pId || (document.getElementById('lblFilterVariant') || {}).value || (document.getElementById('lblFilterSize') || {}).value || (document.getElementById('lblFilterBox') || {}).value || (document.getElementById('lblSearchInput') || {}).value);
+
+      let selected;
+      if (isFiltered) {
+        selected = list.filter(pi => selectedPieceIds.has(pi.id));
+        if (!selected.length && list.length > 0) {
+          selected = list;
+          list.forEach(it => selectedPieceIds.add(it.id));
+          renderBarcodeLabelsPage();
+        }
+      } else {
+        selected = inventory_items.filter(pi => selectedPieceIds.has(pi.id));
+        if (!selected.length && inventory_items.length > 0) {
+          selected = list;
+          list.forEach(it => selectedPieceIds.add(it.id));
+          renderBarcodeLabelsPage();
+        }
+      }
+
+      if (!selected || !selected.length) {
+        showToast('Please select at least one barcode label to print.', 'warning');
+        return;
+      }
+
+      currentPreviewItems = selected;
+      if (settings.barcodePrintMode === 'thermal') {
+        // One click on Print Barcodes silently prints complete batch directly to TSC TL240
+        await printThermalBarcodesDirect(selected);
+      } else {
+        openPrintPreviewSelected();
+      }
+    }
+
+    function setBarcodePrintLayout(mode) {
+      currentLabelPrintMode = mode;
+      updateLayoutToggleButtons();
+      renderPrintPreviewModal(currentPreviewItems);
+    }
+
+    function updateLayoutToggleButtons() {
+      const btnThermal = document.getElementById('btnLayoutThermal');
+      const btnA4 = document.getElementById('btnLayoutA4');
+      if (btnThermal && btnA4) {
+        if (currentLabelPrintMode === 'thermal') {
+          btnThermal.className = 'btn sm primary';
+          btnThermal.style.background = '';
+          btnThermal.style.color = '';
+          btnA4.className = 'btn sm';
+          btnA4.style.background = 'transparent';
+          btnA4.style.color = 'var(--text-muted)';
+        } else {
+          btnA4.className = 'btn sm primary';
+          btnA4.style.background = '';
+          btnA4.style.color = '';
+          btnThermal.className = 'btn sm';
+          btnThermal.style.background = 'transparent';
+          btnThermal.style.color = 'var(--text-muted)';
+        }
+      }
     }
 
     function renderPrintPreviewModal(items) {
       const container = document.getElementById('printPreviewPages');
       const summaryEl = document.getElementById('printSummaryText');
+      const btnAction = document.getElementById('btnPrintModalAction');
       if (!container) return;
 
-      const totalLabels = items.length;
-      const perPage = 36;
-      const totalPages = Math.ceil(totalLabels / perPage);
+      currentPreviewItems = items || [];
+      const totalLabels = currentPreviewItems.length;
+      const storeName = (settings.storeName || 'MAULANA SHOES').toUpperCase();
+      const thermalPrinterName = settings.thermalPrinterName || 'TSC TL240';
 
-      if (summaryEl) summaryEl.textContent = `Selected: ${totalLabels} labels • ${totalPages} A4 Page(s)`;
+      if (currentLabelPrintMode === 'thermal') {
+        // Dedicated 2 x 1 inch (50.8 x 25.4 mm) Thermal Layout
+        if (summaryEl) {
+          summaryEl.textContent = `Selected: ${totalLabels} label(s) • ${totalLabels} Individual Thermal Page(s) [2" × 1" • 50.8 × 25.4 mm]`;
+        }
+        if (btnAction) {
+          btnAction.innerHTML = `<span class="material-symbols-outlined">print</span> Print to ${thermalPrinterName}`;
+        }
 
-      let pagesHTML = '';
-      for (let pIdx = 0; pIdx < totalPages; pIdx++) {
-        const pageItems = items.slice(pIdx * perPage, (pIdx + 1) * perPage);
-        const labelsHTML = pageItems.map(it => {
+        const cardsHTML = currentPreviewItems.map((it, idx) => {
           const p = products.find(x => x.id === it.product_id) || {};
           const v = variants.find(x => x.id === it.variant_id) || {};
+          // Only one unique identifier that uniquely identifies the product variant/piece
+          const uniqueIdentifier = it.piece_code || it.barcode || p.sku || '000000';
+
           return `
-            <div class="barcode-label" style="width:48mm; height:29mm; border:1px dashed #cbd5e1; padding:2mm; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fff; text-align:center;">
-              <div style="font-size:7.5pt; font-weight:800; text-transform:uppercase; line-height:1;">MAULANA SHOES</div>
-              <div style="font-size:7pt; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">${p.name || 'Footwear'}</div>
-              <div style="font-size:7.5pt; font-weight:700;">Size <b>${v.size || '-'}</b> • <b>${money(p.price)}</b></div>
-              <canvas id="preview-bc-${it.id}" style="width:42mm; height:12mm; margin:1mm 0;"></canvas>
-              <div style="font-family:monospace; font-size:8pt; font-weight:800; line-height:1;">${it.piece_code}</div>
+            <div class="thermal-label-page" style="width:50.8mm; height:25.4mm; max-width:50.8mm; max-height:25.4mm; background:#ffffff; border:1px solid #94a3b8; border-radius:3px; box-sizing:border-box; padding:1.0mm 1.5mm 0.8mm 1.5mm; display:flex; flex-direction:column; align-items:center; justify-content:space-between; text-align:center; box-shadow:0 3px 8px rgba(0,0,0,0.18); position:relative; overflow:hidden; margin:4px 0;">
+              <span class="no-print" style="position:absolute; top:2px; right:4px; font-size:7.5px; font-weight:800; background:#0284c7; color:#fff; padding:1px 4px; border-radius:3px; line-height:1;">#${idx + 1}</span>
+              <div style="width:100%; display:flex; flex-direction:column; align-items:center; line-height:1.15;">
+                <div style="font-size:7.2pt; font-weight:900; text-transform:uppercase; letter-spacing:0.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; color:#000000;">${storeName}</div>
+                <div style="font-size:6.6pt; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; color:#000000; margin-top:0.2mm;">${p.name || 'Footwear'}</div>
+                <div style="font-size:7.6pt; font-weight:900; margin-top:0.3mm; display:flex; align-items:center; justify-content:center; gap:4px; width:100%; color:#000000;">
+                  <span>Size: <b>${v.size || '-'}</b></span>
+                  <span style="color:#000000; font-size:6.5pt;">•</span>
+                  <span><b>${money(p.price)}</b></span>
+                </div>
+              </div>
+              <div style="width:100%; height:9.8mm; max-height:9.8mm; display:flex; align-items:center; justify-content:center; overflow:hidden; margin:0.2mm 0;">
+                <canvas id="preview-bc-${it.id}" style="height:9.5mm; max-width:44mm; image-rendering:pixelated;"></canvas>
+              </div>
+              <div style="width:100%; line-height:1;">
+                <div style="font-family:'Courier New', monospace; font-size:7.2pt; font-weight:900; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#000000;">${uniqueIdentifier}</div>
+              </div>
             </div>
           `;
         }).join('');
 
-        pagesHTML += `
-          <div class="a4-page" style="width:210mm; min-height:297mm; background:#fff; padding:6mm; display:grid; grid-template-columns: repeat(4, 48mm); grid-auto-rows: 29mm; gap:3mm; box-shadow:0 4px 14px rgba(0,0,0,0.2);">
-            ${labelsHTML}
-          </div>
-        `;
+        container.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; gap:12px; width:100%;">${cardsHTML}</div>`;
+      } else {
+        // Multi-column A4 Sheet Layout (36 labels per A4 page)
+        const perPage = 36;
+        const totalPages = Math.ceil(totalLabels / perPage);
+
+        if (summaryEl) summaryEl.textContent = `Selected: ${totalLabels} labels • ${totalPages} A4 Page(s) (36 per page)`;
+        if (btnAction) {
+          btnAction.innerHTML = `<span class="material-symbols-outlined">print</span> Print A4 Sheet`;
+        }
+
+        let pagesHTML = '';
+        for (let pIdx = 0; pIdx < totalPages; pIdx++) {
+          const pageItems = currentPreviewItems.slice(pIdx * perPage, (pIdx + 1) * perPage);
+          const labelsHTML = pageItems.map(it => {
+            const p = products.find(x => x.id === it.product_id) || {};
+            const v = variants.find(x => x.id === it.variant_id) || {};
+            const uniqueIdentifier = it.piece_code || it.barcode || p.sku || '000000';
+            return `
+              <div class="barcode-label" style="width:48mm; height:29mm; border:1px dashed #cbd5e1; padding:2mm; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#fff; text-align:center;">
+                <div style="font-size:7.5pt; font-weight:900; text-transform:uppercase; line-height:1; color:#000;">${storeName}</div>
+                <div style="font-size:7pt; color:#000; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">${p.name || 'Footwear'}</div>
+                <div style="font-size:7.5pt; font-weight:900; color:#000;">Size <b>${v.size || '-'}</b> • <b>${money(p.price)}</b></div>
+                <canvas id="preview-bc-${it.id}" style="width:42mm; height:12mm; margin:1mm 0;"></canvas>
+                <div style="font-family:monospace; font-size:8pt; font-weight:900; line-height:1; color:#000;">${uniqueIdentifier}</div>
+              </div>
+            `;
+          }).join('');
+
+          pagesHTML += `
+            <div class="a4-page" style="width:210mm; min-height:297mm; background:#fff; padding:6mm; display:grid; grid-template-columns: repeat(4, 48mm); grid-auto-rows: 29mm; gap:3mm; box-shadow:0 4px 14px rgba(0,0,0,0.2);">
+              ${labelsHTML}
+            </div>
+          `;
+        }
+
+        container.innerHTML = pagesHTML;
       }
 
-      container.innerHTML = pagesHTML;
-
+      // Draw CODE128 barcodes cleanly onto canvases
       setTimeout(() => {
-        items.forEach(it => {
+        currentPreviewItems.forEach(it => {
           const canvasEl = document.getElementById(`preview-bc-${it.id}`);
           if (canvasEl) {
             try {
-              JsBarcode(canvasEl, it.barcode, { format: "CODE128", width: 1.3, height: 32, margin: 0, displayValue: false });
-            } catch (e) { }
+              JsBarcode(canvasEl, it.barcode, {
+                format: "CODE128",
+                width: currentLabelPrintMode === 'thermal' ? 1.25 : 1.3,
+                height: currentLabelPrintMode === 'thermal' ? 28 : 32,
+                margin: 0,
+                displayValue: false
+              });
+            } catch (e) {
+              console.warn('Barcode render error:', it.barcode, e);
+            }
           }
         });
       }, 40);
+    }
+
+    function buildThermalPrintDocumentHtml(preparedItems, storeName) {
+      const store = (storeName || 'MAULANA SHOES').toUpperCase();
+      const pagesHtml = (preparedItems || []).map((item, idx) => {
+        const pName = item.productName || 'Footwear';
+        const size = item.size ? `Size: ${item.size}` : 'Free Size';
+        const price = item.priceFormatted || '₹0';
+        const uniqueIdentifier = item.pieceCode || item.barcode || item.sku || '000000';
+        const imgContent = item.barcodeDataUrl ? `<img class="barcode-graphic" src="${item.barcodeDataUrl}" alt="barcode" />` : `<div style="font-family:monospace; font-size:12px;">${item.barcode}</div>`;
+
+        return `
+          <div class="thermal-label-page" data-page-index="${idx + 1}">
+            <div class="label-header">
+              <div class="store-name">${store}</div>
+              <div class="product-title">${pName}</div>
+              <div class="size-price-line">
+                <span class="size-text">${size}</span>
+                <span class="sep">•</span>
+                <span class="price-text">${price}</span>
+              </div>
+            </div>
+            <div class="barcode-area">
+              ${imgContent}
+            </div>
+            <div class="label-footer">
+              <div class="barcode-number">${uniqueIdentifier}</div>
+            </div>
+          </div>
+        `;
+      }).join('\n');
+
+      return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Thermal Barcode Labels</title>
+  <style>
+    @page {
+      size: 50.8mm 25.4mm;
+      margin: 0mm;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #000000;
+      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .thermal-label-page {
+      width: 50.8mm;
+      height: 25.4mm;
+      max-width: 50.8mm;
+      max-height: 25.4mm;
+      padding: 1.0mm 1.5mm 0.8mm 1.5mm;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      text-align: center;
+      background: #ffffff;
+      color: #000000;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+    }
+    .thermal-label-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+    .label-header {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1.15;
+    }
+    .store-name {
+      font-size: 7.2pt;
+      font-weight: 900;
+      color: #000000;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+    }
+    .product-title {
+      font-size: 6.6pt;
+      font-weight: 800;
+      color: #000000;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+      margin-top: 0.2mm;
+    }
+    .size-price-line {
+      font-size: 7.6pt;
+      font-weight: 900;
+      color: #000000;
+      margin-top: 0.3mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 100%;
+      white-space: nowrap;
+    }
+    .size-text {
+      font-weight: 900;
+      color: #000000;
+    }
+    .sep {
+      color: #000000;
+      font-size: 6.5pt;
+      font-weight: 900;
+    }
+    .price-text {
+      font-weight: 900;
+      color: #000000;
+    }
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+      margin-top: 0.2mm;
+    }
+    .size-price-line {
+      font-size: 7.2pt;
+      font-weight: 800;
+      margin-top: 0.3mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      width: 100%;
+      white-space: nowrap;
+    }
+    .size-text {
+      font-weight: 800;
+    }
+    .sep {
+      color: #555555;
+      font-size: 6pt;
+    }
+    .price-text {
+      font-weight: 900;
+    }
+    .barcode-area {
+      width: 100%;
+      height: 9.8mm;
+      max-height: 9.8mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin: 0.2mm 0;
+    }
+    .barcode-graphic {
+      height: 9.5mm;
+      max-width: 44mm;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    .label-footer {
+      width: 100%;
+      line-height: 1;
+    }
+    .barcode-number {
+      font-family: "Courier New", Courier, monospace;
+      font-size: 6.8pt;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  </style>
+</head>
+<body>
+${pagesHtml}
+</body>
+</html>`;
+    }
+
+    async function executeBarcodePrintAction() {
+      if (!currentPreviewItems || !currentPreviewItems.length) {
+        showToast('Please select at least one barcode label to print.', 'warning');
+        return;
+      }
+
+      if (currentLabelPrintMode === 'thermal') {
+        await printThermalBarcodesDirect(currentPreviewItems);
+      } else {
+        document.body.className = 'printing-labels';
+        window.print();
+      }
+    }
+
+    async function printThermalBarcodesDirect(items) {
+      const printerName = settings.thermalPrinterName || 'TSC TL240';
+      const storeName = (settings.storeName || 'MAULANA SHOES').toUpperCase();
+
+      if (window.electronAPI && typeof window.electronAPI.printThermal === 'function') {
+        showToast(`Submitting ${items.length} label(s) silently to ${printerName}...`, 'info');
+
+        // Extract canvas bitmaps for 100% accurate barcode rendering
+        const preparedItems = items.map(it => {
+          const p = products.find(x => x.id === it.product_id) || {};
+          const v = variants.find(x => x.id === it.variant_id) || {};
+          const canvas = document.getElementById(`preview-bc-${it.id}`);
+          let dataUrl = '';
+          if (canvas && typeof canvas.toDataURL === 'function') {
+            try { dataUrl = canvas.toDataURL('image/png'); } catch (e) {}
+          }
+          return {
+            productName: p.name || 'Footwear',
+            sku: p.sku || '',
+            size: v.size || '-',
+            priceFormatted: money(p.price),
+            barcode: it.barcode,
+            pieceCode: it.piece_code,
+            barcodeDataUrl: dataUrl
+          };
+        });
+
+        const thermalHtml = buildThermalPrintDocumentHtml(preparedItems, storeName);
+
+        try {
+          const result = await window.electronAPI.printThermal({
+            html: thermalHtml,
+            printerName: printerName
+          });
+
+          if (result && result.success) {
+            showToast(`Successfully sent ${items.length} label(s) silently to ${printerName}!`, 'success');
+            closeModal('printPreviewModal');
+          } else {
+            const errorMsg = result ? result.error : 'Thermal print submission failed';
+            showToast(errorMsg, 'error');
+            alert(`Thermal Printing Failed:\n\n${errorMsg}\n\nPlease check Windows Printers or configure printer settings.`);
+          }
+        } catch (err) {
+          showToast(`Thermal print error: ${err.message}`, 'error');
+          alert(`Thermal Print Error: ${err.message}`);
+        }
+      } else {
+        // Fallback for non-electron browser execution
+        document.body.className = 'printing-thermal-labels';
+        window.print();
+        showToast(`Printed in thermal layout. Note: Direct silent printing to ${printerName} requires the desktop application.`, 'info');
+      }
+    }
+
+    async function detectInstalledPrinters() {
+      const selectEl = document.getElementById('setDetectedPrintersDropdown');
+      const statusEl = document.getElementById('printerConnectionStatusText');
+      if (!window.electronAPI || typeof window.electronAPI.getPrinters !== 'function') {
+        if (statusEl) {
+          statusEl.textContent = 'Hardware printer detection is active in the desktop POS app.';
+          statusEl.style.color = 'var(--text-muted)';
+        }
+        showToast('Printer detection is available in the desktop app.', 'info');
+        return;
+      }
+
+      try {
+        const res = await window.electronAPI.getPrinters();
+        if (res && res.success && Array.isArray(res.printers)) {
+          if (selectEl) {
+            selectEl.innerHTML = '<option value="">Select from detected printers...</option>' +
+              res.printers.map(p => `<option value="${p.name}">${p.name} ${p.isDefault ? '(Default)' : ''}</option>`).join('');
+            selectEl.style.display = 'inline-block';
+          }
+          if (statusEl) {
+            statusEl.textContent = `Found ${res.printers.length} installed printer(s).`;
+            statusEl.style.color = '#16a34a';
+          }
+          showToast(`Found ${res.printers.length} installed printer(s).`, 'success');
+        } else {
+          if (statusEl) {
+            statusEl.textContent = 'Could not detect printers: ' + (res.error || 'Unknown error');
+            statusEl.style.color = '#dc2626';
+          }
+        }
+      } catch (err) {
+        showToast('Error querying printers: ' + err.message, 'error');
+      }
+    }
+
+    function applySelectedDetectedPrinter(name) {
+      if (!name) return;
+      const input = document.getElementById('setThermalPrinterName');
+      if (input) input.value = name;
+      showToast(`Selected printer: ${name}`, 'info');
+    }
+
+    async function testThermalPrinterConnection() {
+      const targetName = (document.getElementById('setThermalPrinterName') || {}).value || settings.thermalPrinterName || 'TSC TL240';
+      const statusEl = document.getElementById('printerConnectionStatusText');
+
+      if (!window.electronAPI || typeof window.electronAPI.getPrinters !== 'function') {
+        if (statusEl) {
+          statusEl.textContent = `Configured: "${targetName}" (Test available in desktop app)`;
+          statusEl.style.color = 'var(--primary)';
+        }
+        showToast(`Thermal printer set to: "${targetName}"`, 'info');
+        return;
+      }
+
+      try {
+        const res = await window.electronAPI.getPrinters();
+        if (res && res.success && Array.isArray(res.printers)) {
+          const matched = res.printers.find(p => (p.name || '').trim().toLowerCase() === targetName.trim().toLowerCase());
+          if (matched) {
+            if (statusEl) {
+              statusEl.textContent = `✓ "${matched.name}" is installed and online!`;
+              statusEl.style.color = '#16a34a';
+            }
+            showToast(`Found printer: "${matched.name}" in Windows!`, 'success');
+          } else {
+            const listStr = res.printers.map(p => p.name).join(', ');
+            if (statusEl) {
+              statusEl.textContent = `✗ "${targetName}" not found. Available: [${listStr}]`;
+              statusEl.style.color = '#dc2626';
+            }
+            showToast(`Printer "${targetName}" not found in Windows.`, 'warning');
+          }
+        }
+      } catch (err) {
+        showToast('Test failed: ' + err.message, 'error');
+      }
     }
 
     function openPieceDetailModal(pieceId) {
@@ -7198,6 +7965,13 @@
       document.getElementById('setReceiptWidth').value = settings.receiptWidth || '80mm';
       document.getElementById('setDefaultLowStock').value = (settings.defaultLowStock !== undefined && settings.defaultLowStock !== null) ? settings.defaultLowStock : 5;
 
+      const thermalInput = document.getElementById('setThermalPrinterName');
+      if (thermalInput) thermalInput.value = settings.thermalPrinterName || 'TSC TL240';
+      const receiptInput = document.getElementById('setReceiptPrinterName');
+      if (receiptInput) receiptInput.value = settings.receiptPrinterName || 'RETSOL RTP-82UE';
+      const printModeSelect = document.getElementById('setBarcodePrintMode');
+      if (printModeSelect) printModeSelect.value = settings.barcodePrintMode || 'thermal';
+
       const taxCheck = document.getElementById('setEnableTax');
       if (taxCheck) {
         taxCheck.checked = Boolean(settings.enableTax);
@@ -7221,6 +7995,14 @@
       settings.warrantyTerms = document.getElementById('setWarrantyTerms').value.trim();
       settings.receiptWidth = document.getElementById('setReceiptWidth').value;
       settings.defaultLowStock = Number(document.getElementById('setDefaultLowStock').value || 5);
+
+      const thermalInput = document.getElementById('setThermalPrinterName');
+      if (thermalInput) settings.thermalPrinterName = thermalInput.value.trim() || 'TSC TL240';
+      const receiptInput = document.getElementById('setReceiptPrinterName');
+      if (receiptInput) settings.receiptPrinterName = receiptInput.value.trim() || 'RETSOL RTP-82UE';
+      const printModeSelect = document.getElementById('setBarcodePrintMode');
+      if (printModeSelect) settings.barcodePrintMode = printModeSelect.value || 'thermal';
+
       settings.enableTax = document.getElementById('setEnableTax').checked;
       settings.taxPercent = Number(document.getElementById('setTaxPercent').value || 5);
 

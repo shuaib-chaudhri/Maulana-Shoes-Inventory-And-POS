@@ -176,6 +176,30 @@ function apiMiddleware(req, res, next) {
     }
   }
 
+  if (url === '/api/pos/thermal-spec' && req.method === 'GET') {
+    const thermalPrinter = require('./thermalPrinter.cjs');
+    return sendJson(res, 200, {
+      success: true,
+      widthMm: thermalPrinter.THERMAL_WIDTH_MM,
+      heightMm: thermalPrinter.THERMAL_HEIGHT_MM,
+      widthMicrons: thermalPrinter.THERMAL_WIDTH_MICRONS,
+      heightMicrons: thermalPrinter.THERMAL_HEIGHT_MICRONS,
+      widthPoints: thermalPrinter.THERMAL_WIDTH_PT,
+      heightPoints: thermalPrinter.THERMAL_HEIGHT_PT,
+      defaultPrinter: thermalPrinter.DEFAULT_PRINTER_NAME
+    });
+  }
+
+  if (url === '/api/pos/generate-thermal-html' && req.method === 'POST') {
+    const thermalPrinter = require('./thermalPrinter.cjs');
+    return parseJsonBody(req)
+      .then(body => {
+        const html = thermalPrinter.generateThermalLabelsHtml(body.items || [], { storeName: body.storeName });
+        return sendJson(res, 200, { success: true, html });
+      })
+      .catch(err => sendJson(res, 400, { success: false, error: err.message }));
+  }
+
   // Not found
   return sendJson(res, 404, { success: false, error: 'Endpoint not found' });
 }

@@ -105,6 +105,171 @@ ipcMain.handle('storage:saveState', async (event, data) => {
   return { success: false, error: 'Invalid data payload' };
 });
 
+const thermalPrinter = require('./server/thermalPrinter.cjs');
+
+async function getSystemPrinters() {
+  if (mainWindow && mainWindow.webContents) {
+    return await mainWindow.webContents.getPrintersAsync();
+  }
+  const tempWin = new BrowserWindow({ show: false, width: 100, height: 100 });
+  const printers = await tempWin.webContents.getPrintersAsync();
+  try { tempWin.close(); } catch (e) {}
+  return printers;
+}
+
+// Thermal Printer IPC handlers
+ipcMain.handle('printer:getPrinters', async () => {
+  try {
+    const printers = await getSystemPrinters();
+    return { success: true, printers };
+  } catch (err) {
+    logMsg(`Error retrieving system printers: ${err.message}`);
+    return { success: false, error: err.message, printers: [] };
+  }
+});
+
+ipcMain.handle('printer:printThermal', async (event, { html, printerName }) => {
+  try {
+    logMsg(`[ThermalPrint] Request received for printer: "${printerName}"`);
+    const installed = await getSystemPrinters();
+    const validation = thermalPrinter.validatePrinterSelection(printerName, installed);
+    if (!validation.valid) {
+      logMsg(`[ThermalPrint] Validation failed: ${validation.error}`);
+      return { success: false, error: validation.error };
+    }
+
+    const matchedPrinter = validation.matchedPrinter;
+    logMsg(`[ThermalPrint] Target printer confirmed: "${matchedPrinter.name}". Preparing print window...`);
+
+    const printWin = new BrowserWindow({
+      show: false,
+      width: 300,
+      height: 200,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false
+      }
+    });
+
+    await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+
+    const printOptions = thermalPrinter.getThermalPrintOptions(matchedPrinter.name);
+
+    return await new Promise((resolve) => {
+      printWin.webContents.print(printOptions, (success, failureReason) => {
+        try { printWin.close(); } catch (e) {}
+        if (!success) {
+          const errMsg = failureReason || 'Printer rejected print job';
+          logMsg(`[ThermalPrint] Job failed on "${matchedPrinter.name}": ${errMsg}`);
+          resolve({ success: false, error: errMsg });
+        } else {
+          logMsg(`[ThermalPrint] Job successfully submitted silently to "${matchedPrinter.name}"`);
+          resolve({ success: true, printerName: matchedPrinter.name });
+        }
+      });
+    });
+  } catch (err) {
+    logMsg(`[ThermalPrint] Exception during print execution: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('printer:printReceipt', async (event, { html, printerName }) => {
+  try {
+    const target = (printerName || 'RETSOL RTP-82UE').trim();
+    logMsg(`[ReceiptPrint] Request received for printer: "${target}"`);
+    const installed = await getSystemPrinters();
+    const validation = thermalPrinter.validatePrinterSelection(target, installed);
+    if (!validation.valid) {
+      logMsg(`[ReceiptPrint] Validation failed: ${validation.error}`);
+      return { success: false, error: validation.error };
+    }
+
+    const matchedPrinter = validation.matchedPrinter;
+    logMsg(`[ReceiptPrint] Target printer confirmed: "${matchedPrinter.name}". Preparing print window...`);
+
+    const printWin = new BrowserWindow({
+      show: false,
+      width: 320,
+      height: 600,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false
+      }
+    });
+
+    await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+
+    // Use driver configured paper width (no A4 override, zero margins)
+    const printOptions = {
+      silent: true,
+      printBackground: true,
+      deviceName: matchedPrinter.name,
+      margins: { marginType: 'none' },
+      landscape: false,
+      color: false
+    };
+
+    return await new Promise((resolve) => {
+      printWin.webContents.print(printOptions, (success, failureReason) => {
+        try { printWin.close(); } catch (e) {}
+        if (!success) {
+          const errMsg = failureReason || 'Printer rejected print job';
+          logMsg(`[ReceiptPrint] Job failed on "${matchedPrinter.name}": ${errMsg}`);
+          resolve({ success: false, error: errMsg });
+        } else {
+          logMsg(`[ReceiptPrint] Receipt successfully printed silently to "${matchedPrinter.name}"`);
+          resolve({ success: true, printerName: matchedPrinter.name });
+        }
+      });
+    });
+  } catch (err) {
+    logMsg(`[ReceiptPrint] Exception during print execution: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('printer:exportPdf', async (event, { html, outputPath }) => {
+  try {
+    const printWin = new BrowserWindow({
+      show: false,
+      width: 300,
+      height: 200,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false
+      }
+    });
+
+    await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+
+    const pdfBuffer = await printWin.webContents.printToPDF({
+      pageSize: {
+        width: thermalPrinter.THERMAL_WIDTH_MICRONS,
+        height: thermalPrinter.THERMAL_HEIGHT_MICRONS
+      },
+      margins: { marginType: 'none' },
+      printBackground: true
+    });
+
+    try { printWin.close(); } catch (e) {}
+
+    let targetPath = outputPath;
+    if (!targetPath) {
+      targetPath = path.join(userDataPath, `thermal_label_test_${Date.now()}.pdf`);
+    }
+    fs.writeFileSync(targetPath, pdfBuffer);
+    logMsg(`[ThermalPrint] Exported test PDF to: ${targetPath}`);
+    return { success: true, filePath: targetPath, size: pdfBuffer.length };
+  } catch (err) {
+    logMsg(`[ThermalPrint] PDF export error: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+});
+
 const { startServer } = require('./server.cjs');
 
 let mainWindow = null;
