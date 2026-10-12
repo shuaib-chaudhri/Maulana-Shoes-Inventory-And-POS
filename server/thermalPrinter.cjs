@@ -1,4 +1,3 @@
-const { DOMImplementation, XMLSerializer } = require('@xmldom/xmldom');
 const JsBarcode = require('jsbarcode');
 
 // Physical specifications for 2 x 1 inch thermal label (TSC TL240)
@@ -11,20 +10,30 @@ const THERMAL_HEIGHT_PT = 72.0; // 72 DPI * 1.0 inch
 const DEFAULT_PRINTER_NAME = 'TSC TL240';
 
 /**
- * Generate inline SVG barcode string using JsBarcode
+ * Generate inline SVG barcode string using JsBarcode object encoder (zero DOM dependencies)
  */
 function generateBarcodeSvg(barcodeText) {
   try {
-    const xmlDoc = new DOMImplementation().createDocument('http://www.w3.org/2000/svg', 'svg', null);
-    JsBarcode(xmlDoc.documentElement, String(barcodeText || '000000'), {
+    const obj = {};
+    JsBarcode(obj, String(barcodeText || '000000'), {
       format: 'CODE128',
-      width: 1.25,
-      height: 30,
-      margin: 0,
-      displayValue: false,
-      xmlDocument: xmlDoc
+      displayValue: false
     });
-    return new XMLSerializer().serializeToString(xmlDoc);
+    const binary = obj.encodings && obj.encodings[0] ? obj.encodings[0].data : '';
+    if (!binary) throw new Error('No barcode binary generated');
+
+    const barWidth = 1.25;
+    const height = 30;
+    const totalWidth = binary.length * barWidth;
+
+    let rects = '';
+    for (let i = 0; i < binary.length; i++) {
+      if (binary[i] === '1') {
+        rects += `<rect x="${(i * barWidth).toFixed(2)}" y="0" width="${barWidth.toFixed(2)}" height="${height}" fill="#000000"/>`;
+      }
+    }
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth.toFixed(2)}" height="${height}" viewBox="0 0 ${totalWidth.toFixed(2)} ${height}">${rects}</svg>`;
   } catch (err) {
     return `<svg width="120" height="28" xmlns="http://www.w3.org/2000/svg"><text x="0" y="18" font-size="12">${barcodeText}</text></svg>`;
   }
