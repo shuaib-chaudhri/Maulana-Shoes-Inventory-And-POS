@@ -45,6 +45,7 @@ const filesToCopy = [
   'server.cjs',
   'maulana_pos_data.json',
   'logo.png',
+  'receipt_logo_thermal.png',
   'package.json'
 ];
 
@@ -204,6 +205,11 @@ if (fs.existsSync(posDataSrc)) {
 const logoSrc = path.join(rootDir, 'logo.png');
 if (fs.existsSync(logoSrc)) {
   fs.copyFileSync(logoSrc, path.join(resDir, 'logo.png'));
+}
+
+const receiptLogoSrc = path.join(rootDir, 'receipt_logo_thermal.png');
+if (fs.existsSync(receiptLogoSrc)) {
+  fs.copyFileSync(receiptLogoSrc, path.join(resDir, 'receipt_logo_thermal.png'));
 }
 
 // 3. Staging Pre-Pack Verification

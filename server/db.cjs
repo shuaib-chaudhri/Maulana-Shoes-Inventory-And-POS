@@ -283,10 +283,19 @@ function seedInitialData(db) {
       receiptWidth: '80mm',
       gstNumber: '',
       thermalPrinterName: 'TSC TL240',
-      receiptPrinterName: 'RETSOL RTP-82UE',
+      receiptPrinterName: 'RETSOL RTP82',
       barcodePrintMode: 'thermal'
     };
     db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('store_settings', JSON.stringify(defaultSettings));
+  } else {
+    // If settings has old RETSOL RTP-82UE or lacks receiptPrinterName, migrate to RETSOL RTP82
+    try {
+      const parsed = JSON.parse(checkSetting.value);
+      if (parsed && (parsed.receiptPrinterName === 'RETSOL RTP-82UE' || !parsed.receiptPrinterName)) {
+        parsed.receiptPrinterName = 'RETSOL RTP82';
+        db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(JSON.stringify(parsed), 'store_settings');
+      }
+    } catch (e) {}
   }
 
   // Check products - ONLY seed demo products in dev mode when SEED_DEMO=true is set
@@ -449,6 +458,9 @@ function getBootstrapData() {
         db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('store_settings', JSON.stringify(settings));
       }
     } catch (e) {}
+  }
+  if (!settings.receiptPrinterName || settings.receiptPrinterName === 'RETSOL RTP-82UE') {
+    settings.receiptPrinterName = 'RETSOL RTP82';
   }
 
   const products = db.prepare('SELECT * FROM products ORDER BY created_at DESC').all();

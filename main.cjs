@@ -30,6 +30,12 @@ function logMsg(msg) {
 
 process.on('uncaughtException', (err) => {
   logMsg(`CRITICAL uncaughtException: ${err ? err.stack || err : 'unknown'}`);
+  if (!mainWindow || !mainWindow.isVisible()) {
+    try {
+      dialog.showErrorBox('Startup Error', `Maulana Shoes POS encountered an error during startup:\n\n${err ? err.message || err : 'Unknown error'}`);
+    } catch (e) {}
+    app.exit(1);
+  }
 });
 
 process.on('unhandledRejection', (reason) => {
@@ -132,7 +138,7 @@ ipcMain.handle('printer:printThermal', async (event, { html, printerName }) => {
   try {
     logMsg(`[ThermalPrint] Request received for printer: "${printerName}"`);
     const installed = await getSystemPrinters();
-    const validation = thermalPrinter.validatePrinterSelection(printerName, installed);
+    const validation = thermalPrinter.validatePrinterSelection(printerName, installed, 'thermal barcode printer');
     if (!validation.valid) {
       logMsg(`[ThermalPrint] Validation failed: ${validation.error}`);
       return { success: false, error: validation.error };
@@ -175,12 +181,12 @@ ipcMain.handle('printer:printThermal', async (event, { html, printerName }) => {
   }
 });
 
-ipcMain.handle('printer:printReceipt', async (event, { html, printerName }) => {
+ipcMain.handle('printer:printReceipt', async (event, { html, printerName, paperWidth }) => {
   try {
-    const target = (printerName || 'RETSOL RTP-82UE').trim();
+    const target = (printerName || 'RETSOL RTP82').trim();
     logMsg(`[ReceiptPrint] Request received for printer: "${target}"`);
     const installed = await getSystemPrinters();
-    const validation = thermalPrinter.validatePrinterSelection(target, installed);
+    const validation = thermalPrinter.validatePrinterSelection(target, installed, 'receipt printer');
     if (!validation.valid) {
       logMsg(`[ReceiptPrint] Validation failed: ${validation.error}`);
       return { success: false, error: validation.error };
@@ -189,9 +195,12 @@ ipcMain.handle('printer:printReceipt', async (event, { html, printerName }) => {
     const matchedPrinter = validation.matchedPrinter;
     logMsg(`[ReceiptPrint] Target printer confirmed: "${matchedPrinter.name}". Preparing print window...`);
 
+    const is58 = String(paperWidth || '').trim().toLowerCase() === '58mm';
+    const winWidth = is58 ? 220 : 302;
+
     const printWin = new BrowserWindow({
       show: false,
-      width: 320,
+      width: winWidth,
       height: 600,
       webPreferences: {
         nodeIntegration: false,
@@ -202,15 +211,20 @@ ipcMain.handle('printer:printReceipt', async (event, { html, printerName }) => {
 
     await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
-    // Use driver configured paper width (no A4 override, zero margins)
-    const printOptions = {
-      silent: true,
-      printBackground: true,
-      deviceName: matchedPrinter.name,
-      margins: { marginType: 'none' },
-      landscape: false,
-      color: false
-    };
+    const printOptions = typeof thermalPrinter.getReceiptPrintOptions === 'function'
+      ? thermalPrinter.getReceiptPrintOptions(matchedPrinter.name, is58 ? '58mm' : '80mm')
+      : {
+          silent: true,
+          printBackground: true,
+          deviceName: matchedPrinter.name,
+          margins: { marginType: 'none' },
+          pageSize: {
+            width: is58 ? 58000 : 80000,
+            height: 297000
+          },
+          landscape: false,
+          color: false
+        };
 
     return await new Promise((resolve) => {
       printWin.webContents.print(printOptions, (success, failureReason) => {
@@ -247,10 +261,7 @@ ipcMain.handle('printer:exportPdf', async (event, { html, outputPath }) => {
     await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
     const pdfBuffer = await printWin.webContents.printToPDF({
-      pageSize: {
-        width: thermalPrinter.THERMAL_WIDTH_MICRONS,
-        height: thermalPrinter.THERMAL_HEIGHT_MICRONS
-      },
+      preferCSSPageSize: true,
       margins: { marginType: 'none' },
       printBackground: true
     });

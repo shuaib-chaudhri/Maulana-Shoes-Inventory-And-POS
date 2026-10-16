@@ -1,7 +1,7 @@
 {
   "name": "maulana-shoes-inventory-pos",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.14",
   "main": "main.cjs",
   "type": "module",
   "repository": {
@@ -59,6 +59,7 @@
       "build/icon.ico",
       "build/icon.png",
       "logo.png",
+      "receipt_logo_thermal.png",
       "maulana_pos_data.json",
       "package.json",
       "!**/*.sqlite*",
