@@ -109,7 +109,7 @@ function loadJsonStore(forceReload = false) {
   return jsonStore;
 }
 
-function saveJsonStore() {
+function saveJsonStore(throwOnError = false) {
   if (!jsonStore) return;
   try {
     const dir = path.dirname(JSON_BACKUP_PATH);
@@ -117,6 +117,7 @@ function saveJsonStore() {
     fs.writeFileSync(JSON_BACKUP_PATH, JSON.stringify(jsonStore, null, 2), 'utf8');
   } catch (err) {
     console.error('Failed to write JSON backup to disk:', err.message);
+    if (throwOnError) throw err;
   }
 }
 
@@ -535,6 +536,14 @@ function saveProduct(data) {
   if (!db) {
     const store = loadJsonStore();
     const { product, variants = [], boxes = [], box_items = [], inventory_pieces = [], is_non_footwear = false } = data;
+    // Snapshot so a failed disk write does not leave unsaved changes in memory
+    const rollback = {
+      products: [...store.products],
+      variants: [...store.variants],
+      boxes: [...store.boxes],
+      box_items: [...store.box_items],
+      inventory_items: [...store.inventory_items]
+    };
     if (product && product.id) {
       const pIdx = store.products.findIndex(p => p.id === product.id);
       if (pIdx >= 0) store.products[pIdx] = { ...store.products[pIdx], ...product };
@@ -559,6 +568,12 @@ function saveProduct(data) {
     if (is_non_footwear && product && product.id) {
       const keepIds = new Set(inventory_pieces.map(p => p.id));
       store.inventory_items = store.inventory_items.filter(pi => pi.product_id !== product.id || pi.status !== 'In Stock' || keepIds.has(pi.id));
+    } else if (product && product.id) {
+      // Footwear: remove in-stock pieces dropped from an edited box/size so stock decreases persist
+      const keepIds = new Set(inventory_pieces.map(p => p.id));
+      const editedCells = new Set(box_items.map(bi => `${bi.box_id}|${bi.variant_id}`));
+      store.inventory_items = store.inventory_items.filter(pi =>
+        pi.product_id !== product.id || pi.status !== 'In Stock' || keepIds.has(pi.id) || !editedCells.has(`${pi.box_id}|${pi.variant_id}`));
     }
 
     inventory_pieces.forEach(pi => {
@@ -566,7 +581,12 @@ function saveProduct(data) {
       if (piIdx >= 0) store.inventory_items[piIdx] = { ...store.inventory_items[piIdx], ...pi };
       else store.inventory_items.push(pi);
     });
-    saveJsonStore();
+    try {
+      saveJsonStore(true);
+    } catch (err) {
+      Object.assign(store, rollback);
+      throw err;
+    }
     supabaseSync.syncProductSave(data);
     return getBootstrapData();
   }
@@ -628,6 +648,16 @@ function saveProduct(data) {
         db.prepare(`DELETE FROM inventory_pieces WHERE product_id = ? AND status = 'In Stock' AND id NOT IN (${placeholders})`).run(product.id, ...pieceIds);
       } else {
         db.prepare(`DELETE FROM inventory_pieces WHERE product_id = ? AND status = 'In Stock'`).run(product.id);
+      }
+    } else if (product && product.id) {
+      // Footwear: remove in-stock pieces dropped from an edited box/size so stock decreases persist
+      const keepIds = new Set(inventory_pieces.map(pi => pi.id));
+      const selectCell = db.prepare(`SELECT id FROM inventory_pieces WHERE product_id = ? AND box_id = ? AND variant_id = ? AND status = 'In Stock'`);
+      const deletePiece = db.prepare(`DELETE FROM inventory_pieces WHERE id = ?`);
+      for (const bi of box_items) {
+        for (const row of selectCell.all(product.id, bi.box_id, bi.variant_id)) {
+          if (!keepIds.has(row.id)) deletePiece.run(row.id);
+        }
       }
     }
 

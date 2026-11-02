@@ -82,25 +82,65 @@ function startServer(port = 3000) {
       });
     });
 
-    server.on('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
-        console.log(`Port ${PORT} in use, using running instance.`);
+    // The port the POS is reachable on is exposed as server.posPort. Port 3000 is preferred because
+    // the renderer's origin (and its localStorage/IndexedDB) is tied to it.
+    let tryPort = Number(PORT);
+    const lastPort = tryPort + MAX_PORT_FALLBACKS;
+
+    server.on('error', async (err) => {
+      if (err.code !== 'EADDRINUSE') return reject(err);
+
+      // Reuse the port only when another POS instance owns it; any other program on it
+      // (e.g. an editor's preview server) would be loaded in place of the POS
+      if (await isPosServer(tryPort)) {
+        console.log(`Port ${tryPort} in use by a running POS instance, reusing it.`);
+        server.posPort = tryPort;
         activeServer = server;
-        resolve(server);
-      } else {
-        reject(err);
+        return resolve(server);
       }
+      if (tryPort >= lastPort) {
+        return reject(new Error(`Ports ${PORT}-${lastPort} are all in use by other programs`));
+      }
+      console.log(`Port ${tryPort} in use by another program, trying ${tryPort + 1}.`);
+      tryPort++;
+      server.listen(tryPort, '127.0.0.1');
     });
 
-    server.listen(PORT, '127.0.0.1', () => {
+    server.on('listening', () => {
       console.log(`====================================================`);
       console.log(`  MAULANA SHOES POS & INVENTORY`);
       console.log(`  Begumpeth, Solapur, Maharashtra`);
-      console.log(`  Running on http://127.0.0.1:${PORT}`);
+      console.log(`  Running on http://127.0.0.1:${tryPort}`);
       console.log(`====================================================`);
+      server.posPort = tryPort;
       activeServer = server;
       resolve(server);
     });
+
+    server.listen(tryPort, '127.0.0.1');
+  });
+}
+
+const MAX_PORT_FALLBACKS = 10;
+
+// True when the server on this port answers the POS thermal-spec endpoint
+function isPosServer(port) {
+  return new Promise((resolve) => {
+    const req = http.get({ host: '127.0.0.1', port, path: '/api/pos/thermal-spec', timeout: 1500 }, (res) => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => { body += chunk; });
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          resolve(res.statusCode === 200 && data.success === true && typeof data.widthMm === 'number');
+        } catch (e) {
+          resolve(false);
+        }
+      });
+    });
+    req.on('timeout', () => req.destroy());
+    req.on('error', () => resolve(false));
   });
 }
 

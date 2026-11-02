@@ -18,12 +18,24 @@ const RECEIPT_58MM_WIDTH_MICRONS = 58000; // 58mm * 1000
 const RECEIPT_ROLL_HEIGHT_MICRONS = 297000; // 297mm * 1000
 const DEFAULT_RECEIPT_PRINTER_NAME = 'RETSOL RTP82';
 
+// Printable width of each roll. The receipt page is sized to the printable area, not the nominal
+// paper width: the RTP82 driver form is "80(72.1) x 297 mm" (80mm paper, 72.1mm printable), and an
+// 80mm-wide page is wider than the print head. 58mm rolls print 48mm (384 dots at 203 DPI).
+// Keep in sync with buildReceiptDocumentHtml() in index.html.
+const RECEIPT_80MM_PRINTABLE_MM = 72.1;
+const RECEIPT_58MM_PRINTABLE_MM = 48;
+const RECEIPT_80MM_PRINTABLE_MICRONS = 72100; // 72.1mm * 1000
+const RECEIPT_58MM_PRINTABLE_MICRONS = 48000; // 48mm * 1000
+
 // Barcode dot grid for the thermal label printer. Every CODE128 module is drawn as a whole number
 // of printer dots so bar/space proportions survive rasterisation (a fractional module, e.g.
 // 0.18mm = 1.44 dots, rounds to uneven 1- and 2-dot bars). Keep in sync with index.html.
 const THERMAL_PRINTER_DPI = 203; // TSC TL240 native resolution (8 dots/mm). Set to 300 for a 300 DPI model.
 const BARCODE_QUIET_ZONE_MODULES = 10; // CODE128 minimum quiet zone (10X) on each side
 const BARCODE_MAX_DOTS_PER_MODULE = 2;
+// Thermal label bar height. Taller bars let the scan line cross the symbol at an angle and route
+// around scuffs. Keep in sync with THERMAL_BARCODE_HEIGHT_MM in index.html.
+const BARCODE_HEIGHT_MM = 10;
 
 /**
  * Generate inline SVG barcode string using JsBarcode object encoder (zero DOM dependencies).
@@ -33,7 +45,7 @@ const BARCODE_MAX_DOTS_PER_MODULE = 2;
  */
 function generateBarcodeSvg(barcodeText) {
   const labelDots = Math.round(THERMAL_WIDTH_MM / 25.4 * THERMAL_PRINTER_DPI);
-  const heightDots = Math.round(6.5 / 25.4 * THERMAL_PRINTER_DPI);
+  const heightDots = Math.round(BARCODE_HEIGHT_MM / 25.4 * THERMAL_PRINTER_DPI);
   const widthIn = labelDots / THERMAL_PRINTER_DPI;
   const heightIn = heightDots / THERMAL_PRINTER_DPI;
   const svgOpen = `<svg xmlns="http://www.w3.org/2000/svg" width="${widthIn}in" height="${heightIn}in" viewBox="0 0 ${labelDots} ${heightDots}" preserveAspectRatio="none" shape-rendering="crispEdges"`;
@@ -203,8 +215,8 @@ function generateThermalLabelsHtml(items, options = {}) {
     }
     .barcode-area {
       width: 100%;
-      height: 6.8mm;
-      max-height: 6.8mm;
+      height: ${BARCODE_HEIGHT_MM + 0.3}mm;
+      max-height: ${BARCODE_HEIGHT_MM + 0.3}mm;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -212,7 +224,7 @@ function generateThermalLabelsHtml(items, options = {}) {
       margin: 0.25mm 0;
     }
     .barcode-graphic {
-      height: 6.5mm;
+      height: ${BARCODE_HEIGHT_MM}mm;
       max-width: 42mm;
       object-fit: contain;
       image-rendering: pixelated;
@@ -361,8 +373,16 @@ function getThermalPrintOptions(printerDeviceName) {
 }
 
 /**
+ * Printable width in mm for the configured receipt paper width ('80mm' standard or '58mm' compact)
+ */
+function getReceiptPrintableWidthMm(paperWidth = '80mm') {
+  const is58 = String(paperWidth).trim().toLowerCase() === '58mm';
+  return is58 ? RECEIPT_58MM_PRINTABLE_MM : RECEIPT_80MM_PRINTABLE_MM;
+}
+
+/**
  * Generate Electron webContents.print options for silent receipt printing
- * Matches actual configured paper width (80mm standard or 58mm compact)
+ * The page width is the printable width of the configured paper (see RECEIPT_*_PRINTABLE_MM)
  */
 function getReceiptPrintOptions(printerDeviceName, paperWidth = '80mm') {
   const is58 = String(paperWidth).trim().toLowerCase() === '58mm';
@@ -372,7 +392,7 @@ function getReceiptPrintOptions(printerDeviceName, paperWidth = '80mm') {
     deviceName: printerDeviceName,
     margins: { marginType: 'none' },
     pageSize: {
-      width: is58 ? RECEIPT_58MM_WIDTH_MICRONS : RECEIPT_80MM_WIDTH_MICRONS,
+      width: is58 ? RECEIPT_58MM_PRINTABLE_MICRONS : RECEIPT_80MM_PRINTABLE_MICRONS,
       height: RECEIPT_ROLL_HEIGHT_MICRONS
     },
     landscape: false,
@@ -395,9 +415,14 @@ module.exports = {
   RECEIPT_58MM_WIDTH_MICRONS,
   RECEIPT_ROLL_HEIGHT_MICRONS,
   DEFAULT_RECEIPT_PRINTER_NAME,
+  RECEIPT_80MM_PRINTABLE_MM,
+  RECEIPT_58MM_PRINTABLE_MM,
+  RECEIPT_80MM_PRINTABLE_MICRONS,
+  RECEIPT_58MM_PRINTABLE_MICRONS,
   generateBarcodeSvg,
   generateThermalLabelsHtml,
   validatePrinterSelection,
   getThermalPrintOptions,
+  getReceiptPrintableWidthMm,
   getReceiptPrintOptions
 };

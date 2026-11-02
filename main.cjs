@@ -182,6 +182,7 @@ ipcMain.handle('printer:printThermal', async (event, { html, printerName }) => {
 });
 
 ipcMain.handle('printer:printReceipt', async (event, { html, printerName, paperWidth }) => {
+  let printWin = null;
   try {
     const target = (printerName || 'RETSOL RTP82').trim();
     logMsg(`[ReceiptPrint] Request received for printer: "${target}"`);
@@ -196,9 +197,11 @@ ipcMain.handle('printer:printReceipt', async (event, { html, printerName, paperW
     logMsg(`[ReceiptPrint] Target printer confirmed: "${matchedPrinter.name}". Preparing print window...`);
 
     const is58 = String(paperWidth || '').trim().toLowerCase() === '58mm';
-    const winWidth = is58 ? 220 : 302;
+    const paperKey = is58 ? '58mm' : '80mm';
+    // Lay out at the printable width (mm -> CSS px at 96 DPI) so the window matches the printed page
+    const winWidth = Math.round(thermalPrinter.getReceiptPrintableWidthMm(paperKey) / 25.4 * 96);
 
-    const printWin = new BrowserWindow({
+    printWin = new BrowserWindow({
       show: false,
       width: winWidth,
       height: 600,
@@ -211,20 +214,8 @@ ipcMain.handle('printer:printReceipt', async (event, { html, printerName, paperW
 
     await printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
-    const printOptions = typeof thermalPrinter.getReceiptPrintOptions === 'function'
-      ? thermalPrinter.getReceiptPrintOptions(matchedPrinter.name, is58 ? '58mm' : '80mm')
-      : {
-          silent: true,
-          printBackground: true,
-          deviceName: matchedPrinter.name,
-          margins: { marginType: 'none' },
-          pageSize: {
-            width: is58 ? 58000 : 80000,
-            height: 297000
-          },
-          landscape: false,
-          color: false
-        };
+    const printOptions = thermalPrinter.getReceiptPrintOptions(matchedPrinter.name, paperKey);
+    logMsg(`[ReceiptPrint] Paper setting "${paperWidth}" -> pageSize ${printOptions.pageSize.width}x${printOptions.pageSize.height} microns`);
 
     return await new Promise((resolve) => {
       printWin.webContents.print(printOptions, (success, failureReason) => {
@@ -241,6 +232,7 @@ ipcMain.handle('printer:printReceipt', async (event, { html, printerName, paperW
     });
   } catch (err) {
     logMsg(`[ReceiptPrint] Exception during print execution: ${err.message}`);
+    try { if (printWin && !printWin.isDestroyed()) printWin.close(); } catch (e) {}
     return { success: false, error: err.message };
   }
 });
@@ -286,10 +278,13 @@ const { startServer } = require('./server.cjs');
 let mainWindow = null;
 
 async function createWindow() {
+  // Port the POS server actually runs on; 3000 unless another program already holds it
+  let serverPort = 3000;
   try {
     logMsg('Starting local server on port 3000...');
-    await startServer(3000);
-    logMsg('Local server started successfully on port 3000.');
+    const server = await startServer(3000);
+    if (server && server.posPort) serverPort = server.posPort;
+    logMsg(`Local server started successfully on port ${serverPort}.`);
   } catch (err) {
     logMsg(`Failed to start local server: ${err ? err.stack || err : 'unknown'}`);
     console.error('Failed to start local server:', err);
@@ -344,8 +339,8 @@ async function createWindow() {
     logMsg(`[Renderer] ${message}`);
   });
 
-  logMsg('Loading http://127.0.0.1:3000 in BrowserWindow...');
-  mainWindow.loadURL('http://127.0.0.1:3000');
+  logMsg(`Loading http://127.0.0.1:${serverPort} in BrowserWindow...`);
+  mainWindow.loadURL(`http://127.0.0.1:${serverPort}`);
 
   mainWindow.on('closed', () => {
     logMsg('BrowserWindow closed.');
@@ -353,9 +348,32 @@ async function createWindow() {
   });
 }
 
+// Update lifecycle state: 'idle' | 'downloading' | 'downloaded'
+let updateState = 'idle';
+
+function startUpdateDownload(version) {
+  if (updateState !== 'idle') {
+    logMsg(`[Updater] Download request ignored (state: ${updateState}).`);
+    return;
+  }
+  updateState = 'downloading';
+  logMsg(`[Updater] Download started: v${app.getVersion()} -> v${version}`);
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send('updater:status', { status: 'downloading', version });
+  }
+  // Failures are also emitted via the 'error' event, which resets state and informs the user
+  autoUpdater.downloadUpdate().catch(err => {
+    logMsg(`[Updater] downloadUpdate rejected: ${err ? err.message : 'Unknown'}`);
+  });
+}
+
 function setupAutoUpdater() {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
+  // Differential download rebuilds the installer from the locally cached old installer + cached blockmap.
+  // When those do not match (manual reinstalls, removed old releases) it fails its sha512 check after
+  // reaching 100% and silently restarts as a full download. Always do one verified full download instead.
+  autoUpdater.disableDifferentialDownload = true;
   autoUpdater.logger = {
     info: (msg) => logMsg(`[Updater Info] ${msg}`),
     warn: (msg) => logMsg(`[Updater Warn] ${msg}`),
@@ -377,8 +395,12 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-available', async (info) => {
-    logMsg(`[Updater] Update available: v${info.version}`);
+    logMsg(`[Updater] Update available: v${info.version} (current: v${app.getVersion()})`);
     if (!mainWindow) return;
+    if (updateState !== 'idle') {
+      logMsg(`[Updater] Update prompt skipped (state: ${updateState}).`);
+      return;
+    }
 
     try {
       const { response } = await dialog.showMessageBox(mainWindow, {
@@ -394,13 +416,7 @@ function setupAutoUpdater() {
 
       if (response === 0) {
         logMsg('[Updater] User selected Update Now.');
-        if (mainWindow && mainWindow.webContents) {
-          mainWindow.webContents.send('updater:status', {
-            status: 'downloading',
-            version: info.version
-          });
-        }
-        autoUpdater.downloadUpdate();
+        startUpdateDownload(info.version);
       } else {
         logMsg('[Updater] User deferred update (chose Later).');
       }
@@ -415,7 +431,7 @@ function setupAutoUpdater() {
 
   autoUpdater.on('download-progress', (progressObj) => {
     const percent = Math.round(progressObj.percent || 0);
-    logMsg(`[Updater] Download progress: ${percent}%`);
+    logMsg(`[Updater] Download progress: ${percent}% (${progressObj.transferred}/${progressObj.total} bytes)`);
     if (mainWindow && mainWindow.webContents) {
       mainWindow.webContents.send('updater:progress', {
         percent,
@@ -427,7 +443,9 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('update-downloaded', async (info) => {
-    logMsg(`[Updater] Update downloaded: v${info.version}`);
+    updateState = 'downloaded';
+    // electron-updater emits this only after the file passed its sha512 verification
+    logMsg(`[Updater] Update downloaded and verified: v${info.version} (${info.downloadedFile || 'file path n/a'})`);
     if (mainWindow && mainWindow.webContents) {
       mainWindow.webContents.send('updater:status', {
         status: 'downloaded',
@@ -460,13 +478,39 @@ function setupAutoUpdater() {
     }
   });
 
-  autoUpdater.on('error', (err) => {
-    logMsg(`[Updater] Error silently handled: ${err ? err.message : 'Unknown'}`);
+  autoUpdater.on('error', async (err) => {
+    const wasDownloading = updateState === 'downloading';
+    const message = err ? err.message : 'Unknown error';
+    logMsg(`[Updater] Error (${wasDownloading ? 'during download' : 'during check'}): ${message}` +
+      `${err && err.code ? ` [code: ${err.code}]` : ''}${err && err.stack ? `\n${err.stack}` : ''}`);
+    if (updateState !== 'downloaded') updateState = 'idle';
     if (mainWindow && mainWindow.webContents) {
       mainWindow.webContents.send('updater:status', {
         status: 'error',
-        error: err ? err.message : 'Update check failed'
+        phase: wasDownloading ? 'download' : 'check',
+        error: message
       });
+    }
+
+    // Background check failures (e.g. offline at startup) stay in the log; a failed download the user asked for is shown
+    if (!wasDownloading || !mainWindow) return;
+    try {
+      const { response } = await dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: 'Update Failed',
+        message: 'The update could not be downloaded.',
+        detail: `${message}\n\nCheck the internet connection and try again. Your data has not been changed.`,
+        buttons: ['Retry', 'Later'],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true
+      });
+      if (response === 0) {
+        logMsg('[Updater] User chose Retry after download failure.');
+        autoUpdater.checkForUpdates().catch(e => logMsg(`[Updater] Retry check failed: ${e.message}`));
+      }
+    } catch (dialogErr) {
+      logMsg(`[Updater] error dialog failed: ${dialogErr.message}`);
     }
   });
 }

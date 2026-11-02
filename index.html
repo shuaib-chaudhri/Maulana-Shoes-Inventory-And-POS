@@ -5,16 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Maulana Shoes — POS & Inventory Management</title>
-  <!-- Google Fonts: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
-    rel="stylesheet">
-  <!-- Google Material Symbols -->
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-  <!-- JsBarcode Library for Barcode Generation -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+  <!-- Local fonts (offline): Inter + Material Symbols Outlined -->
+  <link rel="stylesheet" href="./src/assets/fonts/fonts.css" />
+  <!-- JsBarcode Library for Barcode Generation (bundled from node_modules, works offline).
+       Module scripts run before DOMContentLoaded, so window.JsBarcode is set before initData. -->
+  <script type="module" src="./src/lib/barcode.ts"></script>
   <style>
     /* ============================================================
        RESPONSIVE SCREEN FIT SYSTEM (FITS LAPTOPS TO LARGE LCDs)
@@ -3084,9 +3079,6 @@
           <div class="form-section" id="variantFormSection">
             <div class="form-section-title"><span class="material-symbols-outlined"
                 style="font-size:16px;">palette</span> 2. Size & Colour Variants</div>
-            <p id="variantSectionSubtitle" style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Footwear
-              products have multiple
-              sizes. Each variant is trackable independently:</p>
             <div id="variantsContainer" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;"></div>
             <div
               style="background:#ffffff; border:1.5px solid var(--border-color); border-radius:var(--radius-sm); padding:8px 10px; display:flex; gap:10px; align-items:flex-end;">
@@ -3717,6 +3709,8 @@
             showToast(`Downloading update v${data.version}...`, 'info');
           } else if (data && data.status === 'downloaded') {
             showToast(`Update v${data.version} downloaded and ready to install!`, 'success');
+          } else if (data && data.status === 'error' && data.phase === 'download') {
+            showToast(`Update download failed: ${data.error || 'unknown error'}`, 'error');
           }
         });
       }
@@ -4375,7 +4369,6 @@
             </td>
             <td><b style="color:#09090b; font-size:13px; font-weight:750;">${p.brand || '-'}</b></td>
             <td><span class="badge" style="background:#fef9c3; color:#854d0e; font-size:11.5px; font-weight:800;">${p.category || '-'}</span></td>
-            <td><code>${p.sku}</code></td>
             <td>
               <div style="display:flex; flex-wrap:wrap; gap:3px;">
                 ${isNonFootwearCategory(p.category) ? '<span class="muted" style="font-size:12px; font-weight:700;">N/A</span>' : pVars.map(v => `<span class="variant-code-badge" title="Size ${v.size} / ${v.color}" style="font-weight:800; font-size:11.5px; color:#09090b;">Sz ${v.size}</span>`).join('')}
@@ -4407,7 +4400,6 @@
               <th>Product Model</th>
               <th>Brand</th>
               <th>Category</th>
-              <th>SKU</th>
               <th>Sizes</th>
               <th class="num-cell">MRP</th>
               <th class="num-cell">Selling Price</th>
@@ -4478,25 +4470,30 @@
 
         // Restore default footwear variants if currently empty when creating a new footwear product
         if (isNew && (!formVariants || formVariants.length === 0)) {
-          formVariants = [
-            { id: 'TEMP-VAR-1', size: '7', color: 'Black' },
-            { id: 'TEMP-VAR-2', size: '8', color: 'Black' },
-            { id: 'TEMP-VAR-3', size: '9', color: 'Black' },
-            { id: 'TEMP-VAR-4', size: '10', color: 'Black' }
-          ];
-          formBoxes = [
-            {
-              id: 'TEMP-BOX-1',
-              box_number: 'BOX-001',
-              barcode: 'BOX-' + String(Date.now()).slice(-7),
-              quantities: { 'TEMP-VAR-1': 3, 'TEMP-VAR-2': 4, 'TEMP-VAR-3': 4, 'TEMP-VAR-4': 3 }
-            }
-          ];
+          initDefaultFootwearFormState();
           renderFormVariants();
           renderFormBoxes();
           calculateFormTotals();
         }
       }
+    }
+
+    // Default footwear sizes for a new product; every size starts as Black with 0 quantity in each box
+    const DEFAULT_FOOTWEAR_SIZES = ['5', '6', '7', '8', '9', '10', '11', '12'];
+    const DEFAULT_FOOTWEAR_COLOR = 'Black';
+
+    function initDefaultFootwearFormState() {
+      formVariants = DEFAULT_FOOTWEAR_SIZES.map((size, i) => ({ id: 'TEMP-VAR-' + (i + 1), size, color: DEFAULT_FOOTWEAR_COLOR }));
+      const quantities = {};
+      formVariants.forEach(v => { quantities[v.id] = 0; });
+      formBoxes = [
+        {
+          id: 'TEMP-BOX-1',
+          box_number: 'BOX-001',
+          barcode: 'BOX-' + String(Date.now()).slice(-7),
+          quantities
+        }
+      ];
     }
 
     function openAddProductModal() {
@@ -4507,21 +4504,7 @@
       const qtyInput = document.getElementById('pQuantity');
       if (qtyInput) qtyInput.value = 1;
 
-      formVariants = [
-        { id: 'TEMP-VAR-1', size: '7', color: 'Black' },
-        { id: 'TEMP-VAR-2', size: '8', color: 'Black' },
-        { id: 'TEMP-VAR-3', size: '9', color: 'Black' },
-        { id: 'TEMP-VAR-4', size: '10', color: 'Black' }
-      ];
-
-      formBoxes = [
-        {
-          id: 'TEMP-BOX-1',
-          box_number: 'BOX-001',
-          barcode: 'BOX-' + String(Date.now()).slice(-7),
-          quantities: { 'TEMP-VAR-1': 3, 'TEMP-VAR-2': 4, 'TEMP-VAR-3': 4, 'TEMP-VAR-4': 3 }
-        }
-      ];
+      initDefaultFootwearFormState();
 
       handleProductCategoryChange();
       renderFormVariants();
@@ -4591,10 +4574,23 @@
         }
       }
 
+      const isDuplicate = formVariants.some(v =>
+        String(v.size || '').trim().toLowerCase() === sz.toLowerCase() &&
+        String(v.color || '').trim().toLowerCase() === cl.toLowerCase());
+      if (isDuplicate) {
+        showToast(`Variant Size ${sz} / ${cl} already exists.`, 'warning');
+        return;
+      }
+
       const pName = document.getElementById('pName').value.trim() || 'Product';
       const code = generateVariantCode(pName, cat, cl, sz);
 
-      formVariants.push({ id: 'TEMP-VAR-' + Date.now() + Math.random().toString(36).slice(2, 5), size: sz, color: cl, variant_code: code });
+      const newVarId = 'TEMP-VAR-' + Date.now() + Math.random().toString(36).slice(2, 5);
+      formVariants.push({ id: newVarId, size: sz, color: cl, variant_code: code });
+      formBoxes.forEach(b => {
+        if (!b.quantities) b.quantities = {};
+        b.quantities[newVarId] = 0;
+      });
       document.getElementById('newVarSize').value = '';
       document.getElementById('newVarColor').value = '';
       renderFormVariants();
@@ -4630,11 +4626,13 @@
 
     function addNewBoxToForm() {
       const nextNum = 'BOX-' + String(formBoxes.length + 1).padStart(3, '0');
+      const quantities = {};
+      formVariants.forEach(v => { quantities[v.id] = 0; });
       formBoxes.push({
         id: 'TEMP-BOX-' + Date.now(),
         box_number: nextNum,
         barcode: 'BOX-' + String(Date.now()).slice(-7),
-        quantities: {}
+        quantities
       });
       renderFormBoxes();
       calculateFormTotals();
@@ -4656,6 +4654,12 @@
       if (b) {
         if (!b.quantities) b.quantities = {};
         b.quantities[varId] = qty;
+        // Update this box's total in place (a full re-render would steal focus from the input)
+        const boxTotalEl = document.getElementById('formBoxTotal-' + boxId);
+        if (boxTotalEl) {
+          const boxTotal = formVariants.reduce((sum, v) => sum + ((b.quantities && b.quantities[v.id]) || 0), 0);
+          boxTotalEl.textContent = `Box Total: ${boxTotal} pairs/units`;
+        }
       }
       calculateFormTotals();
     }
@@ -4685,7 +4689,7 @@
                 <span class="muted" style="font-size:11px; margin-left:8px;">Barcode: <code>${b.barcode}</code></span>
               </div>
               <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:12px; font-weight:800; color:var(--primary);">Box Total: ${boxTotal} pairs/units</span>
+                <span id="formBoxTotal-${b.id}" style="font-size:12px; font-weight:800; color:var(--primary);">Box Total: ${boxTotal} pairs/units</span>
                 ${formBoxes.length > 1 ? `<button type="button" class="btn sm icon-only" style="color:#dc2626;" onclick="removeBoxFromForm('${b.id}')"><span class="material-symbols-outlined" style="font-size:16px;">delete</span></button>` : ''}
               </div>
             </div>
@@ -4817,6 +4821,10 @@
         });
 
         const variantSeqMap = {};
+        // Piece codes/barcodes and ids must stay unique across all pieces (including sold ones)
+        const usedCodes = new Set();
+        inventory_items.forEach(pi => { if (pi.piece_code) usedCodes.add(pi.piece_code); if (pi.barcode) usedCodes.add(pi.barcode); });
+        const usedPieceIds = new Set(inventory_items.map(pi => pi.id));
         formBoxes.forEach(b => {
           const realBoxId = b.id.startsWith('TEMP-') ? ('BOX-' + Date.now() + Math.random().toString(36).slice(2, 5)) : b.id;
           mappedBoxes.push({
@@ -4838,12 +4846,23 @@
 
             const vObj = mappedVariants.find(x => x.id === realVarId);
             variantSeqMap[realVarId] = variantSeqMap[realVarId] || 0;
-            for (let i = 1; i <= qty; i++) {
-              variantSeqMap[realVarId]++;
-              const seq = String(variantSeqMap[realVarId]).padStart(3, '0');
-              const pCode = `${vObj.variant_code}-${seq}`;
+
+            // Keep existing in-stock pieces (and their printed barcodes); on decrease drop the newest ones
+            const existingPieces = inventory_items.filter(pi => pi.box_id === b.id && pi.variant_id === v.id && pi.status === 'In Stock');
+            existingPieces.slice(0, qty).forEach(pi => mappedPieces.push(pi));
+
+            for (let i = existingPieces.length + 1; i <= qty; i++) {
+              let pCode;
+              do {
+                variantSeqMap[realVarId]++;
+                pCode = `${vObj.variant_code}-${String(variantSeqMap[realVarId]).padStart(3, '0')}`;
+              } while (usedCodes.has(pCode));
+              usedCodes.add(pCode);
+              let n = i;
+              while (usedPieceIds.has(`PIECE-${realVarId}-${realBoxId}-${n}`)) n++;
+              usedPieceIds.add(`PIECE-${realVarId}-${realBoxId}-${n}`);
               mappedPieces.push({
-                id: `PIECE-${realVarId}-${realBoxId}-${i}`,
+                id: `PIECE-${realVarId}-${realBoxId}-${n}`,
                 variant_id: realVarId,
                 product_id: productId,
                 piece_code: pCode,
@@ -4866,23 +4885,30 @@
         is_non_footwear: isNonFootwear
       };
 
+      let savedLocallyOnly = false;
       try {
         const resp = await fetch('/api/pos/save-product', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (resp.ok) {
-          const res = await resp.json();
-          if (res.data) {
-            products = res.data.products;
-            variants = res.data.variants;
-            boxes = res.data.boxes;
-            box_items = res.data.box_items;
-            inventory_items = res.data.inventory_items;
-          }
+        const res = await resp.json().catch(() => null);
+        if (!resp.ok || !res || res.success === false || !res.data) {
+          // Server reached but the write failed: do not report success or change local stock
+          const reason = (res && res.error) ? res.error : `HTTP ${resp.status}`;
+          console.error('save-product failed:', reason);
+          showToast(`Product NOT saved — database error: ${reason}`, 'error');
+          isSaving = false;
+          return;
         }
+        // Reflect the server-confirmed saved state
+        products = res.data.products;
+        variants = res.data.variants;
+        boxes = res.data.boxes;
+        box_items = res.data.box_items;
+        inventory_items = res.data.inventory_items;
       } catch (err) {
+        savedLocallyOnly = true;
         console.warn('Backend SQLite save error, updating local state:', err);
         const exIdx = products.findIndex(x => x.id === productId);
         if (exIdx !== -1) products[exIdx] = prodObj;
@@ -4908,7 +4934,11 @@
       renderProducts();
       renderInventory();
       renderQuickCatalog();
-      showToast(id ? 'Product updated successfully' : 'Product & inventory pieces created successfully', 'success');
+      if (savedLocallyOnly) {
+        showToast('Database server unreachable — changes kept in local browser storage only', 'warning');
+      } else {
+        showToast(id ? 'Product updated successfully' : 'Product & inventory pieces created successfully', 'success');
+      }
       isSaving = false;
     }
 
@@ -6410,10 +6440,12 @@
 
     function buildReceiptDocumentHtml(bodyHtml, paperWidth) {
       const is58 = (paperWidth || (typeof settings !== 'undefined' && settings.receiptWidth) || (bodyHtml && bodyHtml.includes('w-58mm'))) === '58mm';
-      const widthVal = is58 ? '58mm' : '80mm';
-      const containerMaxWidth = is58 ? '50mm' : '72mm';
+      // Page = printable width of the roll (RTP82 driver form "80(72.1) x 297 mm"; 58mm rolls print 48mm).
+      // Keep in sync with RECEIPT_*_PRINTABLE_MM in server/thermalPrinter.cjs.
+      const widthVal = is58 ? '48mm' : '72.1mm';
+      const containerMaxWidth = '100%';
       const heightVal = '297mm';
-      const containerPadding = is58 ? '1mm 1.5mm 3mm 1.5mm' : '1mm 1.5mm 3mm 1.5mm';
+      const containerPadding = '1mm 1mm 3mm 1mm';
       return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6458,14 +6490,14 @@
     }
     .receipt-container.w-58mm {
       width: 100%;
-      max-width: 50mm;
-      padding: 1mm 1.5mm 3mm 1.5mm;
+      max-width: 100%;
+      padding: ${containerPadding};
       font-size: 7pt;
     }
     .receipt-container.w-80mm {
       width: 100%;
-      max-width: 72mm;
-      padding: 1mm 1.5mm 3mm 1.5mm;
+      max-width: 100%;
+      padding: ${containerPadding};
       font-size: 8pt;
     }
     .receipt-watermark {
@@ -6547,13 +6579,16 @@
     .receipt-table th {
       border-bottom: 1px dashed #000000;
       padding: 2px 1px 3px 1px;
-      font-size: ${is58 ? '7pt' : '7.5pt'};
+      font-size: ${is58 ? '6.5pt' : '7.5pt'};
       font-weight: 700;
       text-align: left;
       color: #000000;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
+      letter-spacing: ${is58 ? '0' : '0.3px'};
     }
+    .receipt-table th.col-qty { text-align: center; }
+    .receipt-table th.col-price,
+    .receipt-table th.col-amount { text-align: right; }
     .receipt-table td {
       padding: 2px 1px;
       font-size: ${is58 ? '7pt' : '8pt'};
@@ -6563,10 +6598,10 @@
       word-wrap: break-word;
       overflow-wrap: break-word;
     }
-    .col-item { width: 48%; text-align: left; }
+    .col-item { width: ${is58 ? '42%' : '48%'}; text-align: left; }
     .col-qty { text-align: center; width: 12%; white-space: nowrap; font-weight: 600; }
-    .col-price { text-align: right; width: 18%; white-space: nowrap; }
-    .col-amount { text-align: right; width: 22%; font-weight: 700; white-space: nowrap; }
+    .col-price { text-align: right; width: ${is58 ? '22%' : '18%'}; white-space: nowrap; }
+    .col-amount { text-align: right; width: ${is58 ? '24%' : '22%'}; font-weight: 700; white-space: nowrap; }
     .item-name {
       font-size: ${is58 ? '7.5pt' : '8pt'};
       font-weight: 700;
@@ -6708,6 +6743,12 @@ ${bodyHtml}
     }
 
     function printBoxBarcodeTag() {
+      const boxSvg = document.getElementById('boxSvg');
+      const shownCode = document.getElementById('boxBarcodeCode').textContent;
+      if (!shownCode || !boxSvg || boxSvg.getAttribute('data-rendered-barcode') !== shownCode) {
+        showToast('Box barcode could not be generated. Tag was not printed.', 'error');
+        return;
+      }
       document.body.className = 'printing-box-tag';
       window.print();
     }
@@ -7573,8 +7614,12 @@ ${bodyHtml}
       document.getElementById('boxProductSubtitle').textContent = `Model: ${pName} | Total Footwear Pairs: ${totalPairs}`;
       document.getElementById('boxBarcodeCode').textContent = b.barcode;
 
+      // data-rendered-barcode records a successful render, so printBoxBarcodeTag never prints a blank or stale barcode
+      const boxSvg = document.getElementById('boxSvg');
+      boxSvg.removeAttribute('data-rendered-barcode');
       try {
         JsBarcode("#boxSvg", b.barcode, { format: "CODE128", width: 1.8, height: 44, displayValue: true, margin: 2 });
+        boxSvg.setAttribute('data-rendered-barcode', b.barcode);
       } catch (e) { }
 
       const tableContainer = document.getElementById('boxContentsTable');
@@ -7981,7 +8026,7 @@ ${bodyHtml}
                 <div class="store-name" style="font-size:6.5pt; font-weight:900; text-transform:uppercase; letter-spacing:0.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; text-align:center; color:#000000;">${storeName}</div>
                 <div class="product-title" style="font-size:5.8pt; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; text-align:center; color:#000000; margin-top:0.15mm;">${p.name || 'Footwear'}</div>
               </div>
-              <div class="barcode-area" style="width:100%; height:6.8mm; max-height:6.8mm; display:flex; align-items:center; justify-content:center; overflow:hidden; margin:0.25mm 0;">
+              <div class="barcode-area" style="width:100%; height:${THERMAL_BARCODE_HEIGHT_MM + 0.3}mm; max-height:${THERMAL_BARCODE_HEIGHT_MM + 0.3}mm; display:flex; align-items:center; justify-content:center; overflow:hidden; margin:0.25mm 0;">
                 <div class="barcode-svg-container" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">${generateInlineBarcodeSvg(uniqueIdentifier)}</div>
               </div>
               <div class="label-footer" style="width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; line-height:1.15;">
@@ -8043,6 +8088,9 @@ ${bodyHtml}
     const THERMAL_LABEL_WIDTH_IN = 2;     // 50.8mm label
     const A4_LABEL_GRID_DPI = 600;        // A4 sheets go to office laser printers (600/1200 DPI)
     const BARCODE_QUIET_ZONE_MODULES = 10; // CODE128 minimum quiet zone (10X) on each side
+    // Thermal label bar height. Taller bars let the scan line cross the symbol at an angle and route
+    // around scuffs. Keep in sync with BARCODE_HEIGHT_MM in server/thermalPrinter.cjs.
+    const THERMAL_BARCODE_HEIGHT_MM = 10;
 
     function buildDotGridBarcodeSvg(barcodeText, opts) {
       const text = String(barcodeText || '').trim() || '000000';
@@ -8092,7 +8140,7 @@ ${bodyHtml}
             fullWidthDots: labelDots,
             maxWidthDots: labelDots - (edgeDots * 2),
             maxDotsPerModule: 2,
-            heightDots: Math.round(6.5 / 25.4 * THERMAL_PRINTER_DPI),
+            heightDots: Math.round(THERMAL_BARCODE_HEIGHT_MM / 25.4 * THERMAL_PRINTER_DPI),
             style: 'position:absolute; left:0; display:block; margin:0;'
           });
         }
@@ -8240,8 +8288,8 @@ ${bodyHtml}
     }
     .barcode-area {
       width: 100%;
-      height: 6.8mm;
-      max-height: 6.8mm;
+      height: ${THERMAL_BARCODE_HEIGHT_MM + 0.3}mm;
+      max-height: ${THERMAL_BARCODE_HEIGHT_MM + 0.3}mm;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -8249,7 +8297,7 @@ ${bodyHtml}
       margin: 0.25mm 0;
     }
     .barcode-graphic {
-      height: 6.5mm;
+      height: ${THERMAL_BARCODE_HEIGHT_MM}mm;
       max-width: 42mm;
       object-fit: contain;
       image-rendering: pixelated;
@@ -8327,6 +8375,12 @@ ${pagesHtml}
       if (currentLabelPrintMode === 'thermal') {
         await printThermalBarcodesDirect(currentPreviewItems);
       } else {
+        // Never print a label with a blank barcode area
+        const renderedCount = document.querySelectorAll('#printPreviewPages .barcode-label svg[data-dots-per-module]').length;
+        if (renderedCount !== currentPreviewItems.length) {
+          showToast(`Barcode could not be generated for ${currentPreviewItems.length - renderedCount} label(s). Nothing was printed.`, 'error');
+          return;
+        }
         document.body.className = 'printing-labels';
         window.print();
       }
@@ -8335,6 +8389,17 @@ ${pagesHtml}
     async function printThermalBarcodesDirect(items) {
       const printerName = settings.thermalPrinterName || 'TSC TL240';
       const storeName = (settings.storeName || 'MAULANA SHOES').toUpperCase();
+
+      // Never print a label with a blank barcode area
+      if (typeof JsBarcode !== 'function') {
+        showToast('Barcode generator failed to load. Restart the app. Labels were not printed.', 'error');
+        return;
+      }
+      const failedCodes = items.map(it => it.barcode || it.piece_code || '000000').filter(code => !generateInlineBarcodeSvg(code));
+      if (failedCodes.length) {
+        showToast(`Barcode could not be generated for: ${failedCodes.join(', ')}. Labels were not printed.`, 'error');
+        return;
+      }
 
       if (window.electronAPI && typeof window.electronAPI.printThermal === 'function') {
         showToast(`Submitting ${items.length} label(s) silently to ${printerName}...`, 'info');
